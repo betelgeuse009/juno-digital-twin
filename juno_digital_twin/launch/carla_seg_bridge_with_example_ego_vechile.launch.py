@@ -25,7 +25,7 @@ def generate_launch_description():
         ),
         launch.actions.DeclareLaunchArgument(
             name='vehicle_filter',
-            default_value='vehicle.*'
+            default_value='vehicle.micro.microlino'
         ),
         launch.actions.DeclareLaunchArgument(
             name='spawn_point',
