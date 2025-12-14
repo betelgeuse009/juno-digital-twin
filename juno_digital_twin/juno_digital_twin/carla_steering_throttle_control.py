@@ -14,9 +14,9 @@ class CarlaSimBridge(Node):
         self.max_steer = self.get_parameter('max_steer_deg').get_parameter_value().double_value
 
     
-        self.create_subscription(Float64, 'steering', self.steering_callback, 10)
+        self.create_subscription(Float64, 'commands/KalmanAngle', self.steering_callback, 10)
         
-        self.create_subscription(Float32, 'throttle', self.throttle_callback, 10)
+        self.create_subscription(Float32, 'commands/speed', self.throttle_callback, 10)
 
         # 3. Odometry (Speed feedback from CARLA)
         self.create_subscription(

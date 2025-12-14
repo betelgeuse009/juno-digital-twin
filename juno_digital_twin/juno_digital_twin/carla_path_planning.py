@@ -31,12 +31,11 @@ class PathPlanningNode(Node):
         self.gain = 0
         self.DEBUG = True
 
-
+        self.image_sub = self.create_subscription(Image, topic_names['segmented_image'], self.image_callback, 10)
+        
         self.steer_pub = self.create_publisher(Float64, topic_names['steering'], 10)
         self.req_speed_pub = self.create_publisher(Float64, topic_names['requested_speed'], 10)
         self.bev_pub = self.create_publisher(Image, "/birds_eye_view", 10)
-        self.image_sub = self.create_subscription(Image, topic_names['segmented_image'], self.image_callback, 10)
-        self.original_image_sub = self.create_subscription(Image, '/zed/zed_node/rgb/image_rect_color', self.original_image_callback, 10)
 
         self.bridge = CvBridge()
         self.counter = 0
@@ -44,7 +43,7 @@ class PathPlanningNode(Node):
 
         self.declare_parameter(
             'debug_root',
-            '/home/bylogix/Shell-Eco-Marathon-2025/DEBUG'   # default
+            '/home/ubuntu/Workspace/ros-bridge/src/DEBUG'   # default
         )
         self.debug_root = Path(
         self.get_parameter('debug_root').get_parameter_value().string_value
