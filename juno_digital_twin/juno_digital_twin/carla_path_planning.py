@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from shared_objects.ROS_utils import Topics, SHOW
+from rclpy.qos import qos_profile_sensor_data
 
 from shared_objects.utils_path import computing_lateral_distance, processing_mask
 import cv2
@@ -32,7 +33,8 @@ class PathPlanningNode(Node):
         self.DEBUG = True
 
         self.image_sub = self.create_subscription(Image, topic_names['segmented_image'], self.image_callback, 10)
-        
+        self.original_image_sub = self.create_subscription(Image, '/carla/hero/rgb_front/image', self.original_image_callback, 10)
+
         self.steer_pub = self.create_publisher(Float64, topic_names['steering'], 10)
         self.req_speed_pub = self.create_publisher(Float64, topic_names['requested_speed'], 10)
         self.bev_pub = self.create_publisher(Image, "/birds_eye_view", 10)
@@ -91,7 +93,7 @@ class PathPlanningNode(Node):
         # Convert ROS Image message to OpenCV image
         mask = self.bridge.imgmsg_to_cv2(data, "mono8")
         if self.cv_image is None:
-            self.logger().warn("Image not recieved from original_image_callback")
+            self.get_logger().warn("Image not recieved from original_image_callback")
             return
         
         line_edges = processing_mask(mask, self.cv_image)

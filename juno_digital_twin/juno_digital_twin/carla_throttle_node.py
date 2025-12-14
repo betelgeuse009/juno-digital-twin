@@ -49,7 +49,7 @@ class Throttle(Node):
             self.thr_msg.data=50.0
         else:
             self.thr_msg.data=0.0
-
+        #self.get_logger().info(f'Publishing the ECU/throttle {self.thr_msg}')
         self.throttle_pub.publish(self.thr_msg)
 
 def main(args = None):

@@ -16,12 +16,12 @@ class CarlaSimBridge(Node):
     
         self.create_subscription(Float64, 'commands/KalmanAngle', self.steering_callback, 10)
         
-        self.create_subscription(Float32, 'commands/speed', self.throttle_callback, 10)
+        self.create_subscription(Float32, '/ECU/throttle', self.throttle_callback, 10)
 
         # 3. Odometry (Speed feedback from CARLA)
         self.create_subscription(
             Odometry, 
-            '/carla/hero/.odometry', 
+            '/carla/hero/odometry', 
             self.odometry_callback, 
             10
         )
@@ -34,7 +34,7 @@ class CarlaSimBridge(Node):
         )
         
         # 2. Speed feedback (m/s) for your ThrottleNode
-        self.speed_pub = self.create_publisher(Float32, 'speed', 10)
+        self.speed_pub = self.create_publisher(Float32, '/ECU/speed', 10)
 
         # Internal State
         self.current_steer = 0.0
