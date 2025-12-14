@@ -9,7 +9,7 @@ def generate_launch_description():
     ld = launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument(
             name='host',
-            default_value='localhost'
+            default_value='10.97.94.1' #lxc container ipv4
         ),
         launch.actions.DeclareLaunchArgument(
             name='port',
@@ -87,10 +87,10 @@ def generate_launch_description():
         ),
         Node(
             package='carla_ros_bridge',
-            executable='carla_seg_node',
-            name='carla_seg_node',
+            executable='carla_segnode',
+            name='carla_segnode',
             output='screen',
-            
+
         ),
     ])
     return ld

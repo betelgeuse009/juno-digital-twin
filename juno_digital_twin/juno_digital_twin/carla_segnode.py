@@ -52,7 +52,7 @@ def initialize_model(model_type_param, half_param=False): # Renamed to avoid con
         args = Namespace(config='large')
         model = TwinLiteNetPlus(args)
         model = model.cuda()
-        model_path = '/home/ubuntu/Workspace/ros-bridge/src/shared_objects/TwinLiteNetPlus/pretrained/large.pth'
+        model_path = '/home/ubuntu/Workspace/ros-bridge/src/shared_objects/shared_objects/TwinLiteNetPlus/pretrained/large.pth'
         model.load_state_dict(torch.load(model_path))
         model.eval()
 

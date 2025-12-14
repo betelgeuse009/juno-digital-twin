@@ -781,4 +781,3 @@ class TwinLiteNet(nn.Module):
         classifier2=self.classifier_2(x2)
 
         return (classifier1,classifier2)
-

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from shared_objects.ROS_utils import Topics, SHOW
+from shared_objects1.ROS_utils import Topics, SHOW
 import time, torch
 
 device = torch.device('cuda')
