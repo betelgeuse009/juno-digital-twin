@@ -15,6 +15,7 @@ from shared_objects.ROS_utils import Topics, SHOW
 from shared_objects.utils_model import preprocessing_image, preprocessing_image_no_normalisation, preprocessing_mask
 from shared_objects.utils_model import TwinLiteNet
 from shared_objects.TwinLiteNetPlus.model.model import TwinLiteNetPlus
+from shared_objects.HybridNets.backbone import HybridNetsBackbone
 #from shared_objects.TwinLiteNetPlus.demo import show_seg_result, detect
 # from ultralytics import YOLO # YOLO is not used in the provided snippet for segmentation model init
 
@@ -35,6 +36,30 @@ def initialize_model(model_type_param, half_param=False): # Renamed to avoid con
     if model_type_param == "hybridnets":
         model = torch.hub.load('datvuthanh/hybridnets', 'hybridnets', pretrained=True,
                                device='cuda:0' if torch.cuda.is_available() else 'cpu').eval()
+    elif model_type_param == "local_hybridnets":
+        MULTICLASS_MODE: str = "multiclass"
+
+        anchors_ratios = params.anchors_ratios
+        anchors_scales = params.anchors_scales
+        obj_list = params.obj_list
+        seg_list = params.seg_list
+
+        use_cuda=torch.cuda.is_available()
+
+        #-----------------change on each computer-------------------------------------------------------------------------------------
+        weights_path = '/home/ubuntu/Workspace/ros-bridge/src/shared_objects/shared_objects/HybridNets/weights/hybridnets.pth'
+        state_dict = torch.load(weights_path, map_location='cuda' if use_cuda else 'cpu')
+        print(f"{use_cuda=}")
+
+        seg_mode = MULTICLASS_MODE
+
+        model = HybridNetsBackbone(compound_coef=3, num_classes=len(obj_list), ratios=eval(anchors_ratios),
+                                scales=eval(anchors_scales), seg_classes=len(seg_list), seg_mode=seg_mode)           # lasciare None sulla backbone è ok
+
+        model.load_state_dict(state_dict)
+        model.requires_grad_(False)
+        model.eval()
+
     elif model_type_param == "yolop":
         #work_dir= Path(__file__).resolve().parent # Use resolve() for robustness
         model_path = "/home/betelgeuse/Downloads/yolopv2.pt"
