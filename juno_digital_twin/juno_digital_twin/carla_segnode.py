@@ -15,7 +15,7 @@ from shared_objects.ROS_utils import Topics, SHOW
 from shared_objects.utils_model import preprocessing_image, preprocessing_image_no_normalisation, preprocessing_mask
 from shared_objects.utils_model import TwinLiteNet
 from shared_objects.TwinLiteNetPlus.model.model import TwinLiteNetPlus
-from shared_objects.HybridNets.backbone import HybridNetsBackbone
+#from shared_objects.HybridNets.backbone import HybridNetsBackbone
 #from shared_objects.TwinLiteNetPlus.demo import show_seg_result, detect
 # from ultralytics import YOLO # YOLO is not used in the provided snippet for segmentation model init
 
@@ -46,7 +46,7 @@ def initialize_model(model_type_param, half_param=False): # Renamed to avoid con
 
         use_cuda=torch.cuda.is_available()
 
-        #-----------------change on each computer-------------------------------------------------------------------------------------
+        #change on each computer
         weights_path = '/home/ubuntu/Workspace/ros-bridge/src/shared_objects/shared_objects/HybridNets/weights/hybridnets.pth'
         state_dict = torch.load(weights_path, map_location='cuda' if use_cuda else 'cpu')
         print(f"{use_cuda=}")
