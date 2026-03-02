@@ -103,6 +103,14 @@ def generate_launch_description():
             name='carla_throttle_node',
             output='screen',
         ),
+       Node(
+            package='carla_ros_bridge',
+            executable='carla_stop_node',
+            name='carla_stop_node',
+            output='screen',
+            parameters=[{'brake_wait_duration': 10.0}],
+        ),
+ 
         Node(
             package='carla_ros_bridge',
             executable='carla_steering_throttle_control',

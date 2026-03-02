@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import Float32, Float64
+from std_msgs.msg import Float32, Float64, Bool
 from nav_msgs.msg import Odometry
 from carla_msgs.msg import CarlaEgoVehicleControl
 import math
@@ -15,8 +15,8 @@ class CarlaSimBridge(Node):
 
     
         self.create_subscription(Float64, 'commands/KalmanAngle', self.steering_callback, 10)
-        
         self.create_subscription(Float32, '/ECU/throttle', self.throttle_callback, 10)
+        self.create_subscription(Bool, 'commands/stop', self.stop_callback, 10)
 
         # 3. Odometry (Speed feedback from CARLA)
         self.create_subscription(
@@ -40,6 +40,7 @@ class CarlaSimBridge(Node):
         self.current_steer = 0.0
         self.current_throttle = 0.0
         self.current_brake = 0.0
+        self.stop = False
 
         # Control Loop (20Hz)
         self.create_timer(0.05, self.publish_control)
@@ -52,11 +53,22 @@ class CarlaSimBridge(Node):
         val = msg.data / self.max_steer 
         self.current_steer = np.clip(val, -1.0, 1.0)
 
+    def stop_callback(self, msg):
+        self.stop = msg.data
+        if self.stop:
+            # Mirror Stepper.brake() from real vehicle: full brake, zero throttle
+            self.current_throttle = 0.0
+            self.current_brake = 1.0
+        else:
+            self.current_brake = 0.0
+
     def throttle_callback(self, msg):
+        # Skip throttle/brake update while stop is active
+        if self.stop:
+            return
+
         # Map 0-100 to [0.0, 1.0]
         val = msg.data / 100.0
-        
-        # current logic i choose: If throttle is 0 we coast (brake=0)
         self.current_throttle = np.clip(val, 0.0, 1.0)
         self.current_brake = 0.0
 
