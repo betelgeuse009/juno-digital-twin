@@ -133,17 +133,6 @@ class PathPlanningPlus1Node(Node):
                 log.write(f"{self.counter}: Curvature: {curvature} - longitudinal_distance: {longitudinal_distance} - degree_steering_angle: {degree_steering_angle}\n")
             self.counter += 1
 
-        if SHOW:
-            resized_image = cv2.resize(self.cv_image, (540, 360))
-            resized_mask = cv2.resize(mask, (540, 360))
-            resized_line_edges = cv2.resize(line_edges, (540, 360))
-            concatenated_image = np.hstack((
-                cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB),
-                cv2.cvtColor(resized_mask, cv2.COLOR_GRAY2RGB),
-                cv2.cvtColor(resized_line_edges, cv2.COLOR_GRAY2BGR)))
-            cv2.imshow("Plus1 Path Planning", concatenated_image)
-            cv2.waitKey(1)
-
         # Publish steering
         steer_msg = Float64()
         steer_msg.data = degree_steering_angle
