@@ -15,7 +15,7 @@ from std_msgs.msg import Float64
 from shared_objects.utils_path import computing_lateral_distance, processing_mask
 from shared_objects.ROS_utils import Topics, SHOW
 
-class PathPlanningPlus2Node(Node):
+class PathPlanningPlus3Node(Node):
     def __init__(self):
         super().__init__('carla_path_planning_plus3')
         # Parameters
@@ -56,7 +56,7 @@ class PathPlanningPlus2Node(Node):
         self.req_speed_pub.publish(req_speed_msg)
 
 
-        self.get_logger().info("Path Planning Plus2 Node Initialized")
+        self.get_logger().info("Path Planning Plus3 Node Initialized")
 
     def set_debug_folders(self):
         try:
@@ -143,7 +143,7 @@ class PathPlanningPlus2Node(Node):
 def main(args=None):
     
     rclpy.init(args=args)
-    node = PathPlanningPlus2Node()
+    node = PathPlanningPlus3Node()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
