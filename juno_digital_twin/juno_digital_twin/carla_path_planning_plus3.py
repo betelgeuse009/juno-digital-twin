@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 import pathlib as Path
 import os
@@ -16,7 +17,7 @@ from shared_objects.ROS_utils import Topics, SHOW
 
 class PathPlanningPlus2Node(Node):
     def __init__(self):
-        super().__init__('carla_path_planning_plus2')
+        super().__init__('carla_path_planning_plus3')
         # Parameters
         self.debug = self.declare_parameter('debug', True).value
         self.simulation = self.declare_parameter('simulation', False).value
