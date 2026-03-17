@@ -248,7 +248,7 @@ def computing_delta(midpoints, th_straight=20):
     print(f"{midpoints = }")
     return curvature, midpoints
 
-def computing_lateral_distance(line_edges, show=False):
+def computing_lateral_distance(line_edges, show=False, with_curvature=False):
     global LANE_PIXELS
     global LATERAL_DISTANCE
     global scale_factor
@@ -265,10 +265,16 @@ def computing_lateral_distance(line_edges, show=False):
     x_coords_points = computing_mid_point(line_edges, y)
 
     if x_coords_points is None:
+        if with_curvature:
+            return LATERAL_DISTANCE, long_dist, prev_curvature, None
         return LATERAL_DISTANCE, long_dist, None
     if x_coords_points == -np.inf:
+        if with_curvature:
+            return -np.inf, long_dist, prev_curvature, None
         return -np.inf, long_dist, None
     elif x_coords_points == np.inf:
+        if with_curvature:
+            return np.inf, long_dist, prev_curvature, None
         return np.inf, long_dist, None
 
     posm = y, (x_coords_points[1] + x_coords_points[0])//2
@@ -284,10 +290,10 @@ def computing_lateral_distance(line_edges, show=False):
 
     midpoints = computing_mid_pointS(line_edges, y)
     midpoints.append(posm)
-    # if len(midpoints) > 1:
-    #     curvature, midpoints = computing_delta(midpoints)
-    # else:
-    #     curvature = None                # OCCHIO! Non può uscire come None, mettere la precedente
+    if len(midpoints) > 1:
+        curvature, midpoints = computing_delta(midpoints)
+    else:
+        curvature = prev_curvature
 
     if show:
         for p in midpoints:
@@ -295,4 +301,6 @@ def computing_lateral_distance(line_edges, show=False):
         plt.imshow(line_edges)
         plt.show()
 
+    if with_curvature:
+        return later_distance_meters, long_dist, curvature, midpoints
     return later_distance_meters, long_dist, midpoints
