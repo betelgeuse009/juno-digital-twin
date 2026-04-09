@@ -33,7 +33,7 @@ class PathPlanningNode(Node):
         self.DEBUG = True
 
         self.image_sub = self.create_subscription(Image, topic_names['segmented_image'], self.image_callback, 10)
-        self.original_image_sub = self.create_subscription(Image, '/carla/hero/rgb_front/image', self.original_image_callback, 10)
+        self.original_image_sub = self.create_subscription(Image, '/carla/hero/rgb_front/image', self.original_image_callback, qos_profile_sensor_data)
 
         self.steer_pub = self.create_publisher(Float64, topic_names['steering'], 10)
         self.req_speed_pub = self.create_publisher(Float64, topic_names['requested_speed'], 10)

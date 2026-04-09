@@ -87,8 +87,8 @@ def generate_launch_description():
         ),
          Node(
             package='carla_ros_bridge',
-            executable='carla_path_planning',
-            name='carla_path_planning',
+            executable='carla_path_planning_plus2',
+            name='carla_path_planning_plus2',
             output='screen',
         ),
         Node(

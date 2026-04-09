@@ -1,157 +1,169 @@
-#!/usr/bin/env python3
-import pathlib as Path
+#!/usr/bin/env python
+
 import os
 import math
 import numpy as np
 import cv2
 from datetime import datetime
-from rclpy.node import Node
+
 import rclpy
+from rclpy.node import Node
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import Float64
+from tf2_ros import Buffer, TransformListener
 from shared_objects.utils_path import computing_lateral_distance, processing_mask
 from shared_objects.ROS_utils import Topics, SHOW
 
-class PathPlanningPlus2Node(Node):
-    def __init__(self):
-        super().__init__('carla_path_planning_plus2')
-        # Parameters
-        self.debug = self.declare_parameter('debug', True).value
-        self.simulation = self.declare_parameter('simulation', False).value
-        self.bridge = CvBridge()
-        self.topics = Topics()
-        self.topic_names = self.topics.topic_names
+from rclpy.qos import qos_profile_sensor_data
+import tf2_geometry_msgs
 
-        self.wheelbase = 1.6
+class PathPlanningNode(Node):
+    def __init__(self):
+        super().__init__('path_planning_plus2')
+
+        self.debug = self.declare_parameter('debug', False).value
+        self.wheelbase = self.declare_parameter('wheelbase', 1.6).value
         self.gain = self.declare_parameter('gain', 0.0).value
+
+        self.bridge = CvBridge()
+        self.cv_image = None
         self.counter = 0
 
-        # Publishers
-        self.goal_pub = self.create_publisher(PoseStamped, self.topic_names["goal"], 10)
-        self.bev_pub = self.create_publisher(Image, "/birds_eye_view", 10)
+        topics = Topics()
+        self.topic_names = topics.topic_names
+
+
+        # TF for transforming goal from camera frame to map frame
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # Subscribers
-        self.create_subscription(Image, self.topic_names["segmented_image"], self.image_callback, 10)
-        self.original_image_sub = self.create_subscription(
-            Image, '/carla/hero/rgb_front/image', self.original_image_callback, 10)
-        
-        # Debug folders
-        self.declare_parameter(
-            'debug_root',
-            '/home/ubuntu/Workspace/ros-bridge/src/DEBUG'
-        )
-        self.debug_root = Path(
-            self.get_parameter('debug_root').get_parameter_value().string_value
-        )
+        self.create_subscription(Image, self.topic_names["segmented_image"],self.image_callback, 1)
+        self.create_subscription(Image, '/carla/hero/rgb_front/image',self.original_image_callback, qos_profile_sensor_data)
 
-        if self.DEBUG:
+        # Publisher
+        self.goal_pub = self.create_publisher(PoseStamped, '/goal_pose',1)
+        self.bev_pub = self.create_publisher(Image, "/birds_eye_view", 10)
+        
+        self._latest_goal = None
+        self._goal_timer = self.create_timer(2.0, self._goal_timer_callback)
+        
+
+        if self.debug:
             self.logs_folder, self.output_folder, self.frames_folder = self.set_debug_folders()
 
-        # Initial speed
-        req_speed_msg = Float64()
-        req_speed_msg.data = self.speed
-        self.req_speed_pub.publish(req_speed_msg)
+        self.get_logger().info("PathPlanningPlus2 initialized (Nav2 action client)")
 
-
-        self.get_logger().info("Path Planning Plus2 Node Initialized")
+    def _goal_timer_callback(self):
+        if self._latest_goal is None:
+            return
+        self.goal_pub.publish(self._latest_goal)
+        self._latest_goal = None
 
     def set_debug_folders(self):
-        try:
-            self.debug_root.mkdir(parents=True, exist_ok=True)
+        debug_folder = os.path.join(os.getcwd(), "DEBUG")
+        os.makedirs(debug_folder, exist_ok=True)
 
-            ts_folder = self.debug_root / datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-            ts_folder.mkdir()
+        now = datetime.now()
+        folder = os.path.join(debug_folder, now.strftime("%Y_%m_%d_%H_%M_%S"))
+        os.makedirs(folder, exist_ok=True)
 
-            logs = ts_folder / 'logs'
-            out = ts_folder / 'output'
-            frames = ts_folder / 'frames'
-            for p in (logs, out, frames):
-                p.mkdir()
+        logs_folder = os.path.join(folder, "logs")
+        output_folder = os.path.join(folder, "output")
+        frames_folder = os.path.join(folder, "frames")
+        os.makedirs(logs_folder, exist_ok=True)
+        os.makedirs(output_folder, exist_ok=True)
+        os.makedirs(frames_folder, exist_ok=True)
 
-            self.get_logger().info(
-                f'DEBUG output ->\n  logs:   {logs}\n  output: {out}\n  frames: {frames}'
-            )
-            return str(logs), str(out), str(frames)
+        return logs_folder, output_folder, frames_folder
 
-        except Exception as e:
-            self.get_logger().error(f'Failed to create debug folders: {e}')
-            raise
     def original_image_callback(self, data):
         self.cv_image = self.bridge.imgmsg_to_cv2(data, "rgb8")
 
     def image_callback(self, data):
-        mask = self.bridge.imgmsg_to_cv2(data, "mono8")
         if self.cv_image is None:
-            self.get_logger().warning("Image not received yet from original_image_callback.")
             return
-        
+
+        mask = self.bridge.imgmsg_to_cv2(data, "mono8")
         line_edges = processing_mask(mask, self.cv_image, show=False)
 
-        birds_eye_view_msg = self.bridge.cv2_to_imgmsg(line_edges, encoding="mono8")
-        self.bev_pub.publish(birds_eye_view_msg)
-
-        lateral_distance, longitudinal_distance, curvature, midpoints = computing_lateral_distance(line_edges, show=False)
+        birds_eye_msg = self.bridge.cv2_to_imgmsg(line_edges, encoding="mono8")
         
-        if lateral_distance == -np.inf:
-            degree_steering_angle = -10.0
-        elif lateral_distance == np.inf:
-            degree_steering_angle = 10.0
-        else:
-            distance_to_waypoint = (longitudinal_distance + self.gain) ** 2 + lateral_distance ** 2
-            degree_steering_angle = math.degrees(math.atan2(2 * self.wheelbase * lateral_distance, distance_to_waypoint))
+        self.bev_pub.publish(birds_eye_msg)
+        
+        lateral_distance, longitudinal_distance, midpoints = computing_lateral_distance(
+            line_edges, show=False)
+
+        if SHOW and midpoints is not None:
+            posm = midpoints[-1]
+            for p in midpoints[:-1]:
+                cv2.circle(line_edges, tuple(p[::-1]), 2, (200, 200, 200), 3)
+            cv2.circle(line_edges, tuple(posm[::-1]), 2, (255, 255, 255), 5)
+
+        if lateral_distance == -np.inf or lateral_distance == np.inf:
+            self.get_logger().warn("Lane lost, skipping goal") 
+            # May add emergency steering angles for here like 10 degrees
+            return
 
         if self.debug:
-            resized_image = cv2.resize(self.cv_image, (540, 360))
-            resized_mask = cv2.resize(mask, (540, 360))
-            resized_line_edges = cv2.resize(line_edges, (540, 360))
-            concatenated_image = np.hstack((
-                cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB),
-                cv2.cvtColor(resized_mask, cv2.COLOR_GRAY2RGB),
-                cv2.cvtColor(resized_line_edges, cv2.COLOR_GRAY2BGR)
-            ))
+            self._save_debug(mask, line_edges, lateral_distance,
+                             longitudinal_distance)
 
-            frame_name = f"frame_{self.counter}.png"
-            frame_path = os.path.join(self.frames_folder, frame_name)
-            cv2.imwrite(frame_path, self.cv_image)
+        # Build goal in camera_link frame, then transform to map
+        goal_camera = PoseStamped()
+        goal_camera.header.stamp =data.header.stamp  
+        goal_camera.header.frame_id = "hero/rgb_front"
+        goal_camera.pose.position.x = float(longitudinal_distance)
+        goal_camera.pose.position.y = float(-lateral_distance)
+        goal_camera.pose.orientation.w = 1.0
 
-            output_name = f"output_{self.counter}.png"
-            output_path = os.path.join(self.output_folder, output_name)
-            cv2.imwrite(output_path, concatenated_image)
+        try:
+            goal_map = self.tf_buffer.transform(goal_camera, "map",
+                                                timeout=rclpy.duration.Duration(seconds=0.1))
+        except Exception as e:
+            self.get_logger().warn(f"TF camera->map failed: {e}")
+            return
 
-            log_file = os.path.join(self.logs_folder, f"log_{self.counter}.txt")
-            with open(log_file, "w") as log:
-                log.write(f"{self.counter}: Curvature: {curvature} - Longitudinal Distance: {longitudinal_distance} - Degree Steering Angle: {degree_steering_angle}\n")
-            self.counter += 1
+        self._latest_goal = goal_map
 
-        # Publish goal message
-        goal_msg = PoseStamped()
-        goal_msg.header.stamp = self.get_clock().now().to_msg()
-        goal_msg.header.frame_id = "camera_link" # normally the name is zed_camera_link irl
-        goal_msg.pose.position.x = longitudinal_distance
-        goal_msg.pose.position.y = -lateral_distance
-        goal_msg.pose.position.z = 0.0
-        goal_msg.pose.orientation.x = 0.0
-        goal_msg.pose.orientation.y = 0.0
-        goal_msg.pose.orientation.z = 0.0
-        goal_msg.pose.orientation.w = 1.0
+    def _save_debug(self, mask, line_edges, lateral_distance,
+                    longitudinal_distance):
+        resized_image = cv2.resize(self.cv_image, (540, 360))
+        resized_mask = cv2.resize(mask, (540, 360))
+        resized_line_edges = cv2.resize(line_edges, (540, 360))
+        concatenated_image = np.hstack((
+            cv2.cvtColor(resized_image, cv2.COLOR_BGR2RGB),
+            cv2.cvtColor(resized_mask, cv2.COLOR_GRAY2RGB),
+            cv2.cvtColor(resized_line_edges, cv2.COLOR_GRAY2BGR)
+        ))
 
-        self.goal_pub.publish(goal_msg)
+        cv2.imwrite(
+            os.path.join(self.frames_folder, f"frame_{self.counter}.png"),
+            self.cv_image)
+        cv2.imwrite(
+            os.path.join(self.output_folder, f"output_{self.counter}.png"),
+            concatenated_image)
+
+        log_file = os.path.join(self.logs_folder, f"log_{self.counter}.txt")
+        with open(log_file, "w") as log:
+            log.write(f"{self.counter}: lateral={lateral_distance:.3f} "
+                      f"longitudinal={longitudinal_distance:.3f}\n")
+        self.counter += 1
+
 
 def main(args=None):
-    
     rclpy.init(args=args)
-    node = PathPlanningPlus2Node()
+    node = PathPlanningNode()
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        node.get_logger().info('Shutting down Path Planning Plus2 Node')
+        node.get_logger().info("Shutting down path_planning_plus2")
     finally:
         node.destroy_node()
         rclpy.shutdown()
 
+
 if __name__ == "__main__":
     main()
-
 

@@ -219,7 +219,10 @@ def computing_delta(midpoints, th_straight=20):
     x = midpoints[:, 1] 
     x_mean = np.mean(x)
     x_stdev = np.sqrt((np.var(x)))
-    midpoints = np.stack([p for p in midpoints if abs(p[1] - x_mean) < 1.5*x_stdev])
+    filtered = np.stack([p for p in midpoints if abs(p[1] - x_mean) < 1.5*x_stdev])
+    if len(filtered) ==0: # if all points are far from mean 
+        filtered=list(midpoints)
+    midpoints=np.stack(filtered)
     if next_point[1] not in midpoints[:, 1]:
         midpoints = np.vstack((midpoints, next_point))
 
