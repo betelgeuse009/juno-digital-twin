@@ -8,65 +8,108 @@ from launch_ros.actions import Node as LaunchNode
 
 def generate_launch_description() -> LaunchDescription:
 
-    rviz_cfg = PathJoinSubstitution(
-        [
-            FindPackageShare("carla_ros_bridge"),
-            "launch",
-            "configs",
-            "rtabmap.rviz",
-        ]
+    # ── Odometry Relay ──────────────────────────────────────────────
+    # Converts CARLA's absolute odometry (frame_id='map', world origin)
+    # into relative odometry (frame_id='odom', starting at vehicle spawn).
+    # Also publishes odom -> hero TF.
+    # This fixes the "map frame far from vehicle" problem in RViz.
+    odom_relay = LaunchNode(
+        package="carla_ros_bridge",              # or wherever you put the node
+        executable="carla_odom_relay",
+        name="carla_odom_relay",
+        parameters=[{
+            "input_odom_topic": "/carla/hero/odometry",
+            "output_odom_topic": "/odom",
+            "odom_frame_id": "odom",
+            "child_frame_id": "hero",
+            "use_sim_time": True,
+        }],
+        output="screen",
     )
-    # Identity transform: map and odom are the same in simulation (ground truth)
-    static_odom_tf = LaunchNode(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        arguments=['0', '0', '0', '0', '0', '0', 'map', 'odom'],
-    )
+
+    # ── RTABMAP ─────────────────────────────────────────────────────
     rtabmap_launch = GroupAction([
         SetRemap("goal", "/rtabmap/goal_internal"),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
-                PathJoinSubstitution(
-                    [
-                        FindPackageShare("rtabmap_launch"),
-                        "launch",
-                        "rtabmap.launch.py",
-                    ]
-                )
+                PathJoinSubstitution([
+                    FindPackageShare("rtabmap_launch"),
+                    "launch",
+                    "rtabmap.launch.py",
+                ])
             ),
             launch_arguments={
-                "namespace":          "rtabmap",
-                "rviz_cfg":           rviz_cfg,
-                "args":               "--delete_db_on_start",
-                "use_sim_time": "true",
-                # CARLA frame and odometry
-                "frame_id":           "hero",
-                "odom_topic":         "/carla/hero/odometry",
-                "visual_odometry":    "false",
-                "publish_tf":         "false",
-                "odom_frame_id": "odom",
+                "namespace":            "rtabmap",
+                "rviz_cfg":             "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/configs/rtabmap.rviz",
+                "args": " ".join([
+                    "--delete_db_on_start",
+                    "--Grid/RangeMax 15.0",
+                    "--Grid/RangeMin 0.3",
+                    "--Grid/MaxGroundAngle 25",
+                    "--Grid/MaxObstacleHeight 3.0",
+                    "--Grid/MinGroundHeight -0.1",
+                    "--Grid/MaxGroundHeight 0.1",
+                    "--Grid/NormalK 20",
+                    "--Grid/CellSize 0.1",
+                    #"--Grid/3D false",
+
+                ]),               
+                "use_sim_time":         "true",
+
+                # ── Frame configuration ─────────────────────────────
+                "frame_id":             "hero",
+                "visual_odometry":      "false",
+
+                # RTABMAP publishes map -> odom (loop closure corrections)
+                "publish_tf_map":       "true",
+                # Don't publish odom -> hero (our relay node does that)
+                "publish_tf_odom":      "false",
+
+                # Odom frame is now 'odom' (created by our relay node),
+                # NOT 'map' — this lets RTABMAP compute map->odom corrections
+                "odom_frame_id":        "odom",
+
+                # Odometry topic (output of our relay node)
+                "odom_topic":           "/odom",
+
+                # ── CARLA camera topics ─────────────────────────────
+                "rgb_topic":            "/carla/hero/rgb_front/image",
+                "depth_topic":          "/carla/hero/depth_front/image",
+                "camera_info_topic":    "/carla/hero/rgb_front/camera_info",
+
+                # ── Option B: rgbd_sync nodelet + subscribe_rgbd ────
+                # The rgbd_sync nodelet bundles RGB + depth into a
+                # single rgbd_image message before sending to rtabmap.
+                "rgbd_sync":            "true",
+                # CARLA renders RGB and depth on the same tick with
+                # identical timestamps, so exact sync is fine.
+                "approx_rgbd_sync":     "false",
+                # rtabmap subscribes to the bundled rgbd_image, NOT
+                # to raw depth separately.
+                "subscribe_rgbd":       "true",
+                "subscribe_depth":      "false",
+
+                # Odom may publish at different rate than cameras
+                "approx_sync":          "true",
                 "approx_sync_max_interval": "0.05",
-                # CARLA camera topics
-                "rgb_topic":          "/carla/hero/rgb_front/image",
-                "depth_topic":        "/carla/hero/depth_front/image",
-                "camera_info_topic":  "/carla/hero/rgb_front/camera_info",
 
                 # No IMU needed — CARLA odom is already complete
-                "wait_imu_to_init":   "false",
+                "wait_imu_to_init":     "false",
 
-                # CARLA topics aren't hardware-synced
-                "approx_sync":        "true",
-                "rgbd_sync":          "true",
-                "approx_rgbd_sync":   "true",
-                "topic_queue_size":   "10",
-                "wait_for_transform": "1.0",
-                "tf_tolerance": "0.5",
-                "rviz":               "true",
-                "rtabmap_viz":        "false",
+                # Simulation burst-publish tolerance
+                "topic_queue_size":     "30",
+                "wait_for_transform":   "1.0",
+                "tf_tolerance":         "0.5",
+                "qos": "1", 
+
+                # Visualization
+                "rviz":                 "true",
+                "rtabmap_viz":          "true",
             }.items(),
         ),
     ])
 
     return LaunchDescription([
+        odom_relay,
         rtabmap_launch,
     ])
