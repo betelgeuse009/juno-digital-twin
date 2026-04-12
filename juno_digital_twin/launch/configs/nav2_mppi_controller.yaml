@@ -3,7 +3,7 @@ bt_navigator:
     use_sim_time: True
     global_frame: map
     robot_base_frame: hero
-    odom_topic: /odom
+    odom_topic: /odometry/filtered/local
     bt_loop_duration: 10
     default_server_timeout: 20
     wait_for_service_timeout: 1000
@@ -173,11 +173,10 @@ local_costmap:
   local_costmap:
     ros__parameters:
       use_sim_time: True
-      update_frequency: 10.0
-      publish_frequency: 10.0
-      global_frame: odom
+      update_frequency: 5.0          # was 10 — your data is ~3-5 Hz anyway
+      publish_frequency: 5.0
+      global_frame: map
       robot_base_frame: hero
-      #footprint: "[[-0.15, -0.15], [-0.15, 0.15], [0.15, 0.15], [0.15, -0.15]]"
       footprint: "[[-0.443, -0.608], [-0.443, 0.608], [2.445, 0.608], [2.445, -0.608]]"
       footprint_padding: 0.1
       rolling_window: true
@@ -185,37 +184,40 @@ local_costmap:
       height: 50
       resolution: 0.2
       static_map: false
-      track_unknown_space: false
-      plugins: ["voxel_layer", "inflation_layer"]
-      inflation_layer:
-        plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 1.0
-      voxel_layer:
-        plugin: "nav2_costmap_2d::VoxelLayer"
+      track_unknown_space: false      # KEY FIX — cells start as FREE, not unknown
+      plugins: ["obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"   # switched from VoxelLayer — simpler, 2D
         enabled: True
-        publish_voxel_map: True
-        origin_z: -0.2
-        z_resolution: 0.2
-        z_voxels: 16
-        max_obstacle_height: 2.5
-        mark_threshold: 0
-        observation_sources: rtabmap_obstacles
+        combination_method: 1         # max — take highest cost
+        observation_sources: rtabmap_obstacles rtabmap_clearing
         rtabmap_obstacles:
-          transform_tolerance: 0.5
           topic: /rtabmap/local_grid_obstacle
           data_type: "PointCloud2"
-          expected_update_rate: 0.0
+          transform_tolerance: 0.5
           marking: True
-          clearing: True
-          min_obstacle_height: -0.5
-          max_obstacle_height: 2.5
-          qos_overrides:
-            /rtabmap/local_grid_obstacle:
-              reliability: best_effort
-          obstacle_range: 8.0   # Insert obstacles up to 8m away
-          raytrace_range: 8.5   # Clear free space up to 8.5m away
-          
+          clearing: False             # can't clear from processed cloud
+          min_obstacle_height: 0.0
+          max_obstacle_height: 3.0
+          obstacle_max_range: 30.0
+          obstacle_min_range: 0.5
+          expected_update_rate: 0.0
+        rtabmap_clearing:
+          topic: /rtabmap/local_grid_empty    # your new empty grid!
+          data_type: "PointCloud2"
+          transform_tolerance: 0.5
+          marking: False
+          clearing: True              # empty cells CLEAR obstacles
+          min_obstacle_height: 0.0
+          max_obstacle_height: 3.0
+          raytrace_max_range: 30.0
+          raytrace_min_range: 0.0
+          expected_update_rate: 0.0
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: True
+        cost_scaling_factor: 3.0
+        inflation_radius: 3.0
       always_send_full_costmap: True
 
 global_costmap:
@@ -243,15 +245,16 @@ global_costmap:
         rtabmap_obstacles:
           topic: /rtabmap/local_grid_obstacle
           data_type: "PointCloud2"
-          expected_update_rate: 5.0
+          expected_update_rate: 0.0
           marking: True
           clearing: True
           min_obstacle_height: 0.15
           max_obstacle_height: 2.5
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: True
         cost_scaling_factor: 3.0
-        inflation_radius: 2.0
+        inflation_radius: 3.0
       always_send_full_costmap: True
 
 planner_server:
@@ -323,4 +326,3 @@ velocity_smoother:
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]
     velocity_timeout: 1.0
-

@@ -380,7 +380,7 @@ Visualization Manager:
       Value: true
     - Alpha: 0.699999988079071
       Class: rviz_default_plugins/Map
-      Color Scheme: raw
+      Color Scheme: costmap
       Draw Behind: false
       Enabled: true
       Name: Map
@@ -445,7 +445,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 14.60167121887207
+      Distance: 30.97272491455078
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -460,10 +460,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6253995299339294
+      Pitch: 0.7353994846343994
       Target Frame: map
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.1953799724578857
+      Yaw: 3.140378475189209
     Saved: ~
 Window Geometry:
   Displays:

@@ -43,14 +43,15 @@ def generate_launch_description() -> LaunchDescription:
                 "rviz_cfg":             "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/configs/rtabmap.rviz",
                 "args": " ".join([
                     "--delete_db_on_start",
-                    "--Grid/RangeMax 15.0",
+                    "--Grid/RangeMax 30.0",
                     "--Grid/RangeMin 0.3",
                     "--Grid/MaxGroundAngle 25",
                     "--Grid/MaxObstacleHeight 3.0",
-                    "--Grid/MinGroundHeight -0.1",
-                    "--Grid/MaxGroundHeight 0.1",
+                    "--Grid/MinGroundHeight -0.5",
+                    "--Grid/MaxGroundHeight 0.3",
                     "--Grid/NormalK 20",
                     "--Grid/CellSize 0.1",
+                    "--Grid/RayTracing true",
                     #"--Grid/3D false",
 
                 ]),               
@@ -75,6 +76,7 @@ def generate_launch_description() -> LaunchDescription:
                 # ── CARLA camera topics ─────────────────────────────
                 "rgb_topic":            "/carla/hero/rgb_front/image",
                 "depth_topic":          "/carla/hero/depth_front/image",
+                "depth_camera_info_topic":          "/carla/hero/depth_front/camera_info",
                 "camera_info_topic":    "/carla/hero/rgb_front/camera_info",
 
                 # ── Option B: rgbd_sync nodelet + subscribe_rgbd ────
@@ -104,7 +106,7 @@ def generate_launch_description() -> LaunchDescription:
 
                 # Visualization
                 "rviz":                 "true",
-                "rtabmap_viz":          "true",
+                "rtabmap_viz":          "false",
             }.items(),
         ),
     ])
