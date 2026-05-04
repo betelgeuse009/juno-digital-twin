@@ -10,6 +10,7 @@ import cv2
 from pathlib import Path
 from cv_bridge import CvBridge
 import numpy
+import numpy as np
 from argparse import Namespace
 from shared_objects.ROS_utils import Topics, SHOW
 from shared_objects.utils_model import preprocessing_image, preprocessing_image_no_normalisation, preprocessing_mask
@@ -25,7 +26,7 @@ topic_names = topics.topic_names
 
 # Global parameters
 wheelbase = 1.6
-model_type = "twinplus"  # Choose from "hybridnets", "yolop", "twin", "twinplus"
+model_type = "carla_native"  # Choose from "carla_native", "hybridnets", "yolop", "twin", "twinplus"
 half = False
 count = 0
 seg_img_id = 0
@@ -72,7 +73,7 @@ def initialize_model(model_type_param, half_param=False): # Renamed to avoid con
         model.load_state_dict(torch.load('/home/betelgeuse/TwinLiteNet/pretrained/best.pth', map_location=device))
         model = model.to(device)
         model.eval()
-    elif model_type_param== "twinplus":
+    elif model_type_param == "twinplus":
         device = "cuda" if torch.cuda.is_available() else "cpu"
         model_size = "large"
         args = Namespace(config=model_size)
@@ -81,7 +82,10 @@ def initialize_model(model_type_param, half_param=False): # Renamed to avoid con
         model_path = f"/home/ubuntu/Workspace/ros-bridge/src/shared_objects/shared_objects/TwinLiteNetPlus/pretrained/{model_size}.pth"
         model.load_state_dict(torch.load(model_path))
         model.eval()
-
+    elif model_type_param == "carla_native":
+        # No ML model  segmentation is derived directly from the CARLA semantic
+        # segmentation camera, which provides perfect per-pixel class labels.
+        return None
     else:
         raise ValueError(f"Model type '{model_type_param}' not found")
     if half_param:
@@ -129,7 +133,12 @@ class SegNode(Node):
         self.segmentation_mode = self.get_parameter('segmentation_mode').get_parameter_value().string_value
         self.get_logger().info(f"Segmentation node initialized with segmentation_mode: '{self.segmentation_mode}'")
 
-
+        self.create_subscription(
+            Image,
+            "/carla/hero/semantic_segmentation_front/image",
+            self.seg_callback,
+            qos_profile_sensor_data
+        )
 
         self.current_model_type = model_type
         self.model = initialize_model(self.current_model_type, half_param=half)
@@ -142,11 +151,37 @@ class SegNode(Node):
         self.model_enable_pub = self.create_publisher(Bool, topic_names["model_enable"], 10)
 
         # Subscribers
-        self.create_subscription(Image, "/carla/hero/rgb_front/image", self.image_callback, qos_profile_sensor_data)
+        #self.create_subscription(Image, "/carla/hero/rgb_front/image", self.image_callback, qos_profile_sensor_data)
 
         # Notify model initialization
         self.model_enable_pub.publish(self.bool_msg)
         self.get_logger().info(f"Segmentation Node Initialized (Model: {self.current_model_type}) and Model Enabled")
+
+    def seg_callback(self, data):
+        self.count += 1
+        # Process every 9th frame (roughly 3-4 FPS if ZED is at 30 FPS)
+        # Consider making this rate configurable via a parameter if needed
+        if self.count % 9 != 0:
+            return
+
+
+        cv_image = self.bridge.imgmsg_to_cv2(data, "bgra8")  # <-- bgra8, not bgr8
+
+        # Road in CityScapes palette: RGB(128, 64, 128) → in BGRA that's B=128, G=64, R=128
+        # We only need BGR channels for matching
+        bgr = cv_image[:, :, :3]
+
+        road_bgr = np.array([232, 35, 244])
+
+        # If you also want lane lines, add their color too
+        # road_line_bgr = np.array([?)  # sample a lane-line pixel to find this
+        h, w = cv_image.shape[:2]
+        #self.get_logger().info(f"Bottom-center BGRA: {cv_image[int(h*0.9), w//2]}")
+        mask = np.all(bgr == road_bgr, axis=2).astype(np.uint8) * 255
+
+        seg_msg = self.bridge.cv2_to_imgmsg(mask, "mono8")
+        seg_msg.header = data.header
+        self.seg_img_pub.publish(seg_msg)            
 
     def image_callback(self, data):
         """Callback to process images from the RGB image topic."""

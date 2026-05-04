@@ -163,6 +163,8 @@ def merge_close_edges(lst, tol=10):
 
 
 def computing_mid_point(line_edges, y):
+    if LANE_PIXELS is None:
+        return
     white_pixels = np.nonzero(line_edges[y, :])[0]
     white_pixels = merge_close_edges(white_pixels)
     if len(white_pixels) == 0:
