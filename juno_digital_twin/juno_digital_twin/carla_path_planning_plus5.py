@@ -19,7 +19,7 @@ from std_msgs.msg import String
 from tf2_ros import Buffer, TransformListener
 import tf2_geometry_msgs
 from pyproj import Transformer
-from shared_objects.new_utils_path import computing_lateral_distance, processing_mask
+from shared_objects.new_utils import computing_lateral_distance, processing_mask
 from shared_objects.ROS_utils import Topics, SHOW
 
 ARRIVAL_THRESHOLD_M = 1.5

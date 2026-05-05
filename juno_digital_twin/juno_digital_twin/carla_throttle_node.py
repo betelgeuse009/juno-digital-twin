@@ -12,7 +12,7 @@ class Throttle(Node):
         self.topics = Topics()
         self.topic_names = self.topics.topic_names
 
-        self.speed_threshold = 2
+        self.speed_threshold = 15
         self.stop=False
         self.model_enable=False
         self.engine_enable=True

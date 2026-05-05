@@ -8,13 +8,12 @@ from launch_ros.actions import Node as LaunchNode
 
 def generate_launch_description() -> LaunchDescription:
 
-    # ── Odometry Relay ──────────────────────────────────────────────
+    # Odometry Relay 
     # Converts CARLA's absolute odometry (frame_id='map', world origin)
     # into relative odometry (frame_id='odom', starting at vehicle spawn).
     # Also publishes odom -> hero TF.
-    # This fixes the "map frame far from vehicle" problem in RViz.
     odom_relay = LaunchNode(
-        package="carla_ros_bridge",              # or wherever you put the node
+        package="carla_ros_bridge",             
         executable="carla_odom_relay",
         name="carla_odom_relay",
         parameters=[{
@@ -27,7 +26,7 @@ def generate_launch_description() -> LaunchDescription:
         output="screen",
     )
 
-    # ── RTABMAP ─────────────────────────────────────────────────────
+    # RTABMAP
     rtabmap_launch = GroupAction([
         SetRemap("goal", "/rtabmap/goal_internal"),
         IncludeLaunchDescription(
@@ -43,7 +42,7 @@ def generate_launch_description() -> LaunchDescription:
                 "rviz_cfg":             "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/configs/rtabmap.rviz",
                 "args": " ".join([
                     "--delete_db_on_start",
-                    "--Grid/RangeMax 30.0",
+                    "--Grid/RangeMax 20.0",
                     "--Grid/RangeMin 0.3",
                     "--Grid/MaxGroundAngle 25",
                     "--Grid/MaxObstacleHeight 3.0",
@@ -57,7 +56,7 @@ def generate_launch_description() -> LaunchDescription:
                 ]),               
                 "use_sim_time":         "true",
 
-                # ── Frame configuration ─────────────────────────────
+                # Frame configuration 
                 "frame_id":             "hero",
                 "visual_odometry":      "false",
 
@@ -73,13 +72,12 @@ def generate_launch_description() -> LaunchDescription:
                 # Odometry topic (output of our relay node)
                 "odom_topic":           "/odom",
 
-                # ── CARLA camera topics ─────────────────────────────
+                # CARLA camera topics 
                 "rgb_topic":            "/carla/hero/rgb_front/image",
                 "depth_topic":          "/carla/hero/depth_front/image",
                 "depth_camera_info_topic":          "/carla/hero/depth_front/camera_info",
                 "camera_info_topic":    "/carla/hero/rgb_front/camera_info",
 
-                # ── Option B: rgbd_sync nodelet + subscribe_rgbd ────
                 # The rgbd_sync nodelet bundles RGB + depth into a
                 # single rgbd_image message before sending to rtabmap.
                 "rgbd_sync":            "true",

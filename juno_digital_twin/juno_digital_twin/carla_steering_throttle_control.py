@@ -6,7 +6,7 @@ from nav_msgs.msg import Odometry
 from carla_msgs.msg import CarlaEgoVehicleControl
 import math
 import numpy as np
-
+MS_TO_KMH = 3.6
 class CarlaSimBridge(Node):
     def __init__(self):
         super().__init__('carla_sim_bridge')
@@ -67,8 +67,8 @@ class CarlaSimBridge(Node):
         if self.stop:
             return
 
-        # Map 0-100 to [0.0, 1.0]
-        val = msg.data / 100.0
+        # Map 0-50 to [0.0, 1.0]
+        val = msg.data / 50.0
         self.current_throttle = np.clip(val, 0.0, 1.0)
         self.current_brake = 0.0
 
@@ -76,10 +76,10 @@ class CarlaSimBridge(Node):
         # Calculate speed in m/s
         vel = msg.twist.twist.linear
         speed_ms = math.sqrt(vel.x**2 + vel.y**2 + vel.z**2)
-        
+        speed_kmh = speed_ms * MS_TO_KMH
         # Publish to the topic your Throttle Node expects
         speed_msg = Float32()
-        speed_msg.data = speed_ms
+        speed_msg.data = speed_kmh
         self.speed_pub.publish(speed_msg)
 
     def publish_control(self, _=None):
@@ -89,6 +89,7 @@ class CarlaSimBridge(Node):
         msg.brake = float(self.current_brake)
         msg.hand_brake = False
         msg.manual_gear_shift = False
+        msg.gear = 1
         self.control_pub.publish(msg)
 
 def main(args=None):

@@ -12,10 +12,10 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseStamped
 from tf2_ros import Buffer, TransformListener
-from shared_objects.utils_path import computing_lateral_distance, processing_mask
+from shared_objects.new_utils import computing_lateral_distance, processing_mask
 from shared_objects.ROS_utils import Topics, SHOW
 from nav_msgs.msg import OccupancyGrid
-from std_msgs.msg import Float64
+from std_msgs.msg import Float32, Float64
 import tf2_geometry_msgs
 from pathlib import Path 
 from rclpy.qos import qos_profile_sensor_data
@@ -68,7 +68,6 @@ class PathPlanningNode(Node):
 
         if self.debug:
             self.logs_folder, self.output_folder, self.frames_folder = self.set_debug_folders()
-
         self.get_logger().info("PathPlanningPlus3 initialized (Nav2 action client)")
 
     def _goal_timer_callback(self):

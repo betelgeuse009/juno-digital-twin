@@ -182,6 +182,8 @@ class SegNode(Node):
         seg_msg = self.bridge.cv2_to_imgmsg(mask, "mono8")
         seg_msg.header = data.header
         self.seg_img_pub.publish(seg_msg)            
+        
+        self.model_enable_pub.publish(self.bool_msg)
 
     def image_callback(self, data):
         """Callback to process images from the RGB image topic."""

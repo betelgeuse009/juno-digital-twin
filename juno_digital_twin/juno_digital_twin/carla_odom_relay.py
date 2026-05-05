@@ -78,9 +78,11 @@ class CarlaOdomRelay(Node):
         # Capture initial pose on first message
         if self.initial_pose is None:
             self.initial_pose = abs_position.copy()
-            self.initial_rotation_inv = abs_rotation.inv()
+            initial_yaw = abs_rotation.as_euler('xyz')[2]
+            self.initial_rotation_inv = Rotation.from_euler('z', initial_yaw).inv()
             self.get_logger().info(
                 f'Initial pose captured: position=({pos.x:.2f}, {pos.y:.2f}, {pos.z:.2f})'
+                f'yaw={np.degrees(initial_yaw):.2f}°'
             )
 
         # Compute relative pose: subtract initial position, rotate into initial frame

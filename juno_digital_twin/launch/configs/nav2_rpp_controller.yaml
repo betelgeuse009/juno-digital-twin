@@ -2,13 +2,13 @@ bt_navigator:
   ros__parameters:
     use_sim_time: True
     global_frame: map
-    robot_base_frame: base_link
+    robot_base_frame: hero
     odom_topic: /odometry/filtered/local
     bt_loop_duration: 10
     default_server_timeout: 20
     wait_for_service_timeout: 1000
-    default_nav_to_pose_bt_xml: /home/bylogix/AD-SEM/src/juno_bringup/launch/costmap_configs/juno_custom_navigate_to_pose.xml
-    default_nav_through_poses_bt_xml: /home/bylogix/AD-SEM/src/juno_bringup/launch/costmap_configs/juno_custom_navigate_through_poses.xml
+    default_nav_to_pose_bt_xml: /home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/configs/juno_custom_navigate_to_pose.xml
+    default_nav_through_poses_bt_xml: /home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/configs/juno_custom_navigate_through_poses.xml
     plugin_lib_names:
       - nav2_compute_path_to_pose_action_bt_node
       - nav2_compute_path_through_poses_action_bt_node
@@ -77,7 +77,7 @@ local_costmap:
       update_frequency: 10.0
       publish_frequency: 10.0
       global_frame: odom
-      robot_base_frame: base_link
+      robot_base_frame: hero
       footprint: "[[-0.443, -0.608], [-0.443, 0.608], [2.445, 0.608], [2.445, -0.608]]"
       footprint_padding: 0.1
       rolling_window: true
@@ -86,30 +86,25 @@ local_costmap:
       resolution: 0.2
       static_map: false
       track_unknown_space: false
-      plugins: ["voxel_layer", "inflation_layer"]
-      inflation_layer:
-        plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 1.0
-      voxel_layer:
-        plugin: "nav2_costmap_2d::VoxelLayer"
+      plugins: ["obstacle_layer", "inflation_layer"]
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        publish_voxel_map: True
-        origin_z: -0.1
-        z_resolution: 0.2
-        z_voxels: 16
-        max_obstacle_height: 2.5
-        mark_threshold: 0
-        observation_sources: rtabmap_obstacles
-        rtabmap_obstacles:
-          transform_tolerance: 0.5
-          topic: /rtabmap/local_grid_obstacle
+        observation_sources: laser_scan
+        laser_scan:
+          topic: /voxel_cloud
           data_type: "PointCloud2"
           expected_update_rate: 5.0
+          obstacle_max_range: 15.0   # Maximum range to mark obstacles (meters)
+          raytrace_range: 100.0   # Maximum range to clear free space (meters)
           marking: True
           clearing: True
-          min_obstacle_height: 0.15
+          min_obstacle_height: 0.1
           max_obstacle_height: 2.5
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 10.0
+        inflation_radius: 1.0
       always_send_full_costmap: True
 
 global_costmap:
@@ -119,31 +114,33 @@ global_costmap:
       update_frequency: 2.0
       publish_frequency: 2.0
       global_frame: odom
-      robot_base_frame: base_link
+      robot_base_frame: hero
       footprint: "[[-0.443, -0.608], [-0.443, 0.608], [2.445, 0.608], [2.445, -0.608]]"
       footprint_padding: 0.1
       resolution: 0.05
       width: 40
       height: 40
       rolling_window: true
-      track_unknown_space: false
+      track_unknown_space: false 
       static_map: false
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        observation_sources: rtabmap_obstacles
-        rtabmap_obstacles:
-          topic: /rtabmap/local_grid_obstacle
+        observation_sources: laser_scan
+        laser_scan:
+          topic: /voxel_cloud
           data_type: "PointCloud2"
           expected_update_rate: 5.0
+          obstacle_max_range: 15.0   # Maximum range to mark obstacles (meters)
+          raytrace_range: 100.0   # Maximum range to clear free space (meters)
           marking: True
           clearing: True
-          min_obstacle_height: 0.15
+          min_obstacle_height: 0.1
           max_obstacle_height: 2.5
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
+        cost_scaling_factor: 10.0
         inflation_radius: 1.0
       always_send_full_costmap: True
 
@@ -181,7 +178,7 @@ behavior_server:
     wait:
       plugin: "nav2_behaviors/Wait"
     global_frame: map
-    robot_base_frame: "base_link"
+    robot_base_frame: "hero"
     transform_tolerance: 0.1
     use_sim_time: True
     simulate_ahead_time: 2.0
