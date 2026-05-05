@@ -76,7 +76,7 @@ local_costmap:
       use_sim_time: True
       update_frequency: 10.0
       publish_frequency: 10.0
-      global_frame: odom
+      global_frame: map 
       robot_base_frame: hero
       footprint: "[[-0.443, -0.608], [-0.443, 0.608], [2.445, 0.608], [2.445, -0.608]]"
       footprint_padding: 0.1

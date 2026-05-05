@@ -18,7 +18,13 @@ def generate_launch_description():
         name='carla_path_planning_plus3',
         output='screen',
     )
-
+    old_obstacle_avoidance = Node(
+        package='carla_ros_bridge',
+        executable='carla_old_obstacle_avoidance',
+        name='carla_old_obstacle_avoidance',
+        output='screen',
+    )
+    
     seg_node = Node(
         package='carla_ros_bridge',
         executable='carla_segnode',
@@ -45,6 +51,7 @@ def generate_launch_description():
     ld.add_action(seg_node)
     ld.add_action(throttle_node)
     ld.add_action(steering_control_node)
+    ld.add_action(old_obstacle_avoidance)
 
     return ld
 

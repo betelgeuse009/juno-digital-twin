@@ -42,17 +42,7 @@ def generate_launch_description() -> LaunchDescription:
                 "rviz_cfg":             "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/configs/rtabmap.rviz",
                 "args": " ".join([
                     "--delete_db_on_start",
-                    "--Grid/RangeMax 20.0",
-                    "--Grid/RangeMin 0.3",
-                    "--Grid/MaxGroundAngle 25",
-                    "--Grid/MaxObstacleHeight 3.0",
-                    "--Grid/MinGroundHeight -0.5",
-                    "--Grid/MaxGroundHeight 0.3",
-                    "--Grid/NormalK 20",
-                    "--Grid/CellSize 0.1",
-                    "--Grid/RayTracing true",
-                    #"--Grid/3D false",
-
+                    "--Grid/Sensor 0.0"
                 ]),               
                 "use_sim_time":         "true",
 
