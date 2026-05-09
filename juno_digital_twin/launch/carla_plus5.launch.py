@@ -1,119 +1,77 @@
-import os
+"""CARLA simulation launch.
 
-import launch
-from ament_index_python.packages import get_package_share_directory
+Brings up RTABMAP depth SLAM, the carla_ros_bridge perception + planning +
+actuation pipeline (seg, path_planning_plus5, obstacle_avoidance, steering,
+throttle), and Nav2 with the RPP controller YAML.
+"""
+from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
-def generate_launch_description():
-    ld = launch.LaunchDescription([
-        launch.actions.DeclareLaunchArgument(
-            name='host',
-            default_value='10.97.94.1' #lxc container ipv4
+USE_SIM = True
+NAV2_YAML = "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/configs/nav2_rpp_controller.yaml"
+
+
+def generate_launch_description() -> LaunchDescription:
+    # RTABMAP depth SLAM (lives inside the carla_ros_bridge package)
+    rtabmap_include = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("carla_ros_bridge"), "rtabmap_depth.launch.py",
+            ])
         ),
-        launch.actions.DeclareLaunchArgument(
-            name='port',
-            default_value='2000'
+    )
+
+    # Nav2 with our RPP controller YAML
+    nav2 = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution([
+                FindPackageShare("nav2_bringup"), "launch", "navigation_launch.py",
+            ])
         ),
-        launch.actions.DeclareLaunchArgument(
-            name='timeout',
-            default_value='30'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='role_name',
-            default_value='hero'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='vehicle_filter',
-            default_value='microlino'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='spawn_point',
-            default_value='None'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='town',
-            default_value='silesia_sca'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='passive',
-            default_value='False'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='synchronous_mode_wait_for_vehicle_control_command',
-            default_value='False'
-        ),
-        launch.actions.DeclareLaunchArgument(
-            name='fixed_delta_seconds',
-            default_value='0.033'
-        ),
-        launch.actions.IncludeLaunchDescription(
-            launch.launch_description_sources.PythonLaunchDescriptionSource(
-                os.path.join(get_package_share_directory(
-                    'carla_ros_bridge'), 'carla_ros_bridge.launch.py')
-            ),
-            launch_arguments={
-                'host': launch.substitutions.LaunchConfiguration('host'),
-                'port': launch.substitutions.LaunchConfiguration('port'),
-                'town': launch.substitutions.LaunchConfiguration('town'),
-                'timeout': launch.substitutions.LaunchConfiguration('timeout'),
-                'passive': launch.substitutions.LaunchConfiguration('passive'),
-                'synchronous_mode_wait_for_vehicle_control_command': launch.substitutions.LaunchConfiguration('synchronous_mode_wait_for_vehicle_control_command'),
-                'fixed_delta_seconds': launch.substitutions.LaunchConfiguration('fixed_delta_seconds')
-            }.items()
-        ),
-        launch.actions.IncludeLaunchDescription(
-            launch.launch_description_sources.PythonLaunchDescriptionSource(
-                os.path.join(get_package_share_directory(
-                    'carla_spawn_objects'), 'carla_example_ego_vehicle.launch.py')
-            ),
-            launch_arguments={
-                'host': launch.substitutions.LaunchConfiguration('host'),
-                'port': launch.substitutions.LaunchConfiguration('port'),
-                'timeout': launch.substitutions.LaunchConfiguration('timeout'),
-                'vehicle_filter': launch.substitutions.LaunchConfiguration('vehicle_filter'),
-                'role_name': launch.substitutions.LaunchConfiguration('role_name'),
-                'spawn_point': launch.substitutions.LaunchConfiguration('spawn_point')
-            }.items()
-        ),
-        launch.actions.IncludeLaunchDescription(
-            launch.launch_description_sources.PythonLaunchDescriptionSource(
-                os.path.join(get_package_share_directory(
-                    'carla_manual_control'), 'carla_manual_control.launch.py')
-            ),
-            launch_arguments={
-                'role_name': launch.substitutions.LaunchConfiguration('role_name')
-            }.items()
-        ),
-         Node(
-            package='carla_ros_bridge',
-            executable='carla_path_planning_plus5',
-            name='carla_path_planning_plus5',
-            output='screen',
-        ),
-        Node(
-            package='carla_ros_bridge',
-            executable='carla_segnode',
-            name='carla_segnode',
-            output='screen',
-        ),
-        Node(
-            package='carla_ros_bridge',
-            executable='carla_throttle_node',
-            name='carla_throttle_node',
-            output='screen',
-        ),
-    
-        Node(
-            package='carla_ros_bridge',
-            executable='carla_steering_throttle_control',
-            name='carla_steering_throttle_control',
-            output='screen',
-        ),
+        launch_arguments={
+            "params_file": NAV2_YAML,
+            "use_sim_time": str(USE_SIM).lower(),
+        }.items(),
+    )
+
+    # carla_ros_bridge pipeline
+    seg_node = Node(
+        package="carla_ros_bridge", executable="carla_segnode",
+        name="carla_segnode", output="screen",
+        parameters=[{"use_sim_time": USE_SIM}],
+    )
+    path_planning_node = Node(
+        package="carla_ros_bridge", executable="carla_path_planning_plus5",
+        name="carla_path_planning_plus5", output="screen",
+        parameters=[{"use_sim_time": USE_SIM}],
+    )
+    obstacle_avoidance = Node(
+        package="carla_ros_bridge", executable="carla_obstacle_avoidance",
+        name="carla_obstacle_avoidance_v2", output="screen",
+        parameters=[{"use_sim_time": USE_SIM}],
+    )
+    steering_control_node = Node(
+        package="carla_ros_bridge", executable="carla_steering_throttle_control",
+        name="carla_steering_throttle_control", output="screen",
+        parameters=[{"use_sim_time": USE_SIM}],
+    )
+    throttle_node = Node(
+        package="carla_ros_bridge", executable="carla_throttle_node",
+        name="carla_throttle_node", output="screen",
+        parameters=[{"use_sim_time": USE_SIM}],
+    )
+
+    return LaunchDescription([
+        rtabmap_include,
+        nav2,
+        seg_node,
+        #path_planning_node,
+        obstacle_avoidance,
+        steering_control_node,
+        throttle_node,
     ])
-    return ld
-
-
-if __name__ == '__main__':
-    generate_launch_description()
-

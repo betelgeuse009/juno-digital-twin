@@ -52,16 +52,14 @@ def generate_launch_description() -> LaunchDescription:
 
                 # RTABMAP publishes map -> odom (loop closure corrections)
                 "publish_tf_map":       "true",
-                # Don't publish odom -> hero (our relay node does that)
-                "publish_tf_odom":      "false",
+                "publish_tf_odom":      "true",
 
                 # Odom frame is now 'odom' (created by our relay node),
                 # NOT 'map' — this lets RTABMAP compute map->odom corrections
                 "odom_frame_id":        "odom",
 
                 # Odometry topic (output of our relay node)
-                "odom_topic":           "/odom",
-
+                "odom_topic":    "/odom",
                 # CARLA camera topics 
                 "rgb_topic":            "/carla/hero/rgb_front/image",
                 "depth_topic":          "/carla/hero/depth_front/image",
