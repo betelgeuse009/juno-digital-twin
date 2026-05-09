@@ -92,7 +92,7 @@ local_costmap:
         enabled: True
         observation_sources: laser_scan
         laser_scan:
-          topic: /voxel_cloud
+          topic: /carla/hero/semantic_lidar
           data_type: "PointCloud2"
           expected_update_rate: 5.0
           obstacle_max_range: 15.0   # Maximum range to mark obstacles (meters)
@@ -129,7 +129,7 @@ global_costmap:
         enabled: True
         observation_sources: laser_scan
         laser_scan:
-          topic: /voxel_cloud
+          topic: /carla/hero/semantic_lidar
           data_type: "PointCloud2"
           expected_update_rate: 5.0
           obstacle_max_range: 15.0   # Maximum range to mark obstacles (meters)

@@ -52,7 +52,7 @@ def generate_launch_description() -> LaunchDescription:
     )
     obstacle_avoidance = Node(
         package="carla_ros_bridge", executable="carla_obstacle_avoidance",
-        name="carla_obstacle_avoidance_v2", output="screen",
+        name="carla_obstacle_avoidance_old", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
     )
     steering_control_node = Node(
@@ -61,8 +61,8 @@ def generate_launch_description() -> LaunchDescription:
         parameters=[{"use_sim_time": USE_SIM}],
     )
     throttle_node = Node(
-        package="carla_ros_bridge", executable="carla_throttle_node",
-        name="carla_throttle_node", output="screen",
+        package="carla_ros_bridge", executable="carla_throttle_node_v2",
+        name="carla_throttle_node_v2", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
     )
 

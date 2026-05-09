@@ -91,7 +91,7 @@ def generate_launch_description() -> LaunchDescription:
                 "qos": "1", 
 
                 # Visualization
-                "rviz":                 "true",
+                "rviz":                 "false",
                 "rtabmap_viz":          "false",
             }.items(),
         ),
