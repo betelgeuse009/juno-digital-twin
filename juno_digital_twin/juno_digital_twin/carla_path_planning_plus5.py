@@ -27,7 +27,7 @@ GPS_MSG_TIMEOUT_S = 5.0
 MIN_RTK_STATUS = 2
 STDDEV_MAX_M = 0.1
 DEGRADE_DWELL_S = 3.0
-RECOVER_DWELL_S = 2.0
+RECOVER_DWELL_S = 3.0
 
 
 class Mode(Enum):
@@ -49,7 +49,7 @@ class PathPlanningNode(Node):
 
         self.declare_parameter(
             'debug_root',
-            '/home/bylogix/AD-SEM/DEBUG'   # default
+            '/home/ubuntu/Workspace/ros-bridge/src/DEBUG'   # default
         )
         self.debug_root = Path(
         self.get_parameter('debug_root').get_parameter_value().string_value)
@@ -63,8 +63,9 @@ class PathPlanningNode(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # GPS coordinate transform (WGS84 -> UTM zone 32N for Italy)
+        # But from CARLA GNSS values it seems we are in EPSG:32631 (idk why but Zone = [(Longitude+ 180)/6] +1  )
         self.transformer = Transformer.from_crs(
-            "EPSG:4326", "EPSG:32632", always_xy=True
+            "EPSG:4326", "EPSG:32631", always_xy=True
         )
         self.datum_east = None
         self.datum_north = None
@@ -78,18 +79,19 @@ class PathPlanningNode(Node):
         self.mode = Mode.GPS_NAV
         now_s = self.get_clock().now().nanoseconds * 1e-9
         self._last_gps_msg_time = now_s
+        self.get_logger().warn(f"Last gps msg time {self._last_gps_msg_time}, now_s: {now_s}")
         self._degraded_since = None
         self._good_since = None
 
         # The single goal that Nav2 is currently pursuing
         self._current_goal = None
 
-        self.create_subscription(NavSatFix, "/ublox_gps_node/fix", self._gps_cb, 10)
+        self.create_subscription(NavSatFix, "/carla/hero/gnss", self._gps_cb, 10)
         self.create_subscription(Image, self.topic_names["segmented_image"], self._seg_image_cb, 1)
-        self.create_subscription( Image, "/zed/zed_node/rgb/color/rect/image", self._rgb_image_cb, 1)
+        self.create_subscription( Image, "/carla/hero/rgb_front/image", self._rgb_image_cb, 1)
 
         self.goal_pub = self.create_publisher(PoseStamped, "/goal_pose", 1)
-        self.bev_pub = self.create_publisher(Image, "/birds_eye_view", 10)
+        self.bev_pub = self.create_publisher(Image, "/birds_eye_view", 1)
         self.mode_pub = self.create_publisher(String, "/nav_mode", 1)
 
         # Republish current goal to Nav2 at 5 Hz
@@ -98,8 +100,8 @@ class PathPlanningNode(Node):
         # Arrival check at 5 Hz (GPS mode only)
         self.create_timer(0.2, self._arrival_check_cb)
 
-        # GPS health watchdog at 2 Hz
-        self.create_timer(0.5, self._gps_watchdog_cb)
+        # GPS health watchdog at 1 Hz
+        self.create_timer(1.0, self._gps_watchdog_cb)
 
         if self.debug:
             self.logs_folder, self.output_folder, self.frames_folder = (self.set_debug_folders())
@@ -112,8 +114,8 @@ class PathPlanningNode(Node):
             for row in csv.DictReader(f):
                 rows.append(row)
 
-        lats = [float(r["lat"]) for r in rows]
-        lons = [float(r["lon"]) for r in rows]
+        lats = [float(r["latitude"]) for r in rows]
+        lons = [float(r["longitude"]) for r in rows]
         eastings, northings = self.transformer.transform(lons, lats)
 
         headings = []
@@ -133,11 +135,13 @@ class PathPlanningNode(Node):
         return wp
 
     def _gps_cb(self, msg: NavSatFix):
-        if msg.status.status < 0:
-            return
+        # commented since there is no RTK in Carla
+        #if msg.status.status < 0:
+        #    return
 
         now_s = self.get_clock().now().nanoseconds * 1e-9
         self._last_gps_msg_time = now_s
+        self.get_logger().warn(f"OK GOT A MESSAGE HERE {now_s}")
 
         # covariance_type 0 = UNKNOWN → treat as degraded
         if msg.position_covariance_type > 0:
@@ -155,6 +159,7 @@ class PathPlanningNode(Node):
             self.datum_north = n
             self.datum_set = True
             self.get_logger().info(f"Datum: E={e:.2f} N={n:.2f}")
+            self._snap_wp_to_nearest_ahead()
 
         if degraded:
             if self._degraded_since is None:
@@ -175,6 +180,8 @@ class PathPlanningNode(Node):
         if self.mode != Mode.GPS_NAV:
             return
         now_s = self.get_clock().now().nanoseconds * 1e-9
+        self.get_logger().warn(f"Last gps msg time {self._last_gps_msg_time}, inside the gps watchdog now_s: {now_s}")
+
         if (now_s - self._last_gps_msg_time) > GPS_MSG_TIMEOUT_S:
             self.get_logger().warn(
                 f"No GPS msg for >{GPS_MSG_TIMEOUT_S}s, falling back to VISION"
@@ -203,7 +210,7 @@ class PathPlanningNode(Node):
             return
         try:
             tf = self.tf_buffer.lookup_transform(
-                "map", "base_link", rclpy.time.Time(),
+                "map", "hero", rclpy.time.Time(),
                 timeout=Duration(seconds=0.1),
             )
         except Exception as e:
@@ -245,7 +252,7 @@ class PathPlanningNode(Node):
         lat, lon, yaw = self.waypoints[self.wp_index]
         e, n = self.transformer.transform(lon, lat)
         pose = PoseStamped()
-        pose.header.frame_id = "map"
+        pose.header.frame_id = "hero"
         pose.header.stamp = self.get_clock().now().to_msg()
         pose.pose.position.x = e - self.datum_east
         pose.pose.position.y = n - self.datum_north
@@ -261,7 +268,7 @@ class PathPlanningNode(Node):
 
         try:
             tf = self.tf_buffer.lookup_transform(
-                "map", "base_link", rclpy.time.Time(),
+                "map", "hero", rclpy.time.Time(),
                 timeout=Duration(seconds=0.05),
             )
         except Exception:
@@ -332,7 +339,7 @@ class PathPlanningNode(Node):
             )
             self._current_goal = goal_odom
         except Exception as e:
-            self.get_logger().debug(f"TF camera->odom failed: {e}")
+            self.get_logger().warn(f"TF camera->odom failed: {e}")
 
     def _goal_timer_cb(self):
         if self.mode == Mode.GPS_NAV:
