@@ -78,11 +78,10 @@ class PathPlanningNode(Node):
         # Mode
         self.mode = Mode.GPS_NAV
         now_s = self.get_clock().now().nanoseconds * 1e-9
-        self._last_gps_msg_time = now_s
-        self.get_logger().warn(f"Last gps msg time {self._last_gps_msg_time}, now_s: {now_s}")
+        self._last_gps_msg_time = None 
         self._degraded_since = None
         self._good_since = None
-
+        self.initial_snap_done = False
         # The single goal that Nav2 is currently pursuing
         self._current_goal = None
 
@@ -140,18 +139,19 @@ class PathPlanningNode(Node):
         #    return
 
         now_s = self.get_clock().now().nanoseconds * 1e-9
-        self._last_gps_msg_time = now_s
-        self.get_logger().warn(f"OK GOT A MESSAGE HERE {now_s}")
+        if now_s <= 0:
+            return
 
+        self._last_gps_msg_time = now_s
         # covariance_type 0 = UNKNOWN → treat as degraded
         if msg.position_covariance_type > 0:
             stddev_e = math.sqrt(max(0.0, msg.position_covariance[0]))
             stddev_n = math.sqrt(max(0.0, msg.position_covariance[4]))
             stddev_bad = max(stddev_e, stddev_n) > STDDEV_MAX_M
         else:
-            stddev_bad = True
+            stddev_bad = False
 
-        degraded = (msg.status.status < MIN_RTK_STATUS) or stddev_bad
+        degraded = (msg.status.status < 0) or stddev_bad
 
         if not self.datum_set and not degraded:
             e, n = self.transformer.transform(msg.longitude, msg.latitude)
@@ -159,7 +159,6 @@ class PathPlanningNode(Node):
             self.datum_north = n
             self.datum_set = True
             self.get_logger().info(f"Datum: E={e:.2f} N={n:.2f}")
-            self._snap_wp_to_nearest_ahead()
 
         if degraded:
             if self._degraded_since is None:
@@ -180,9 +179,8 @@ class PathPlanningNode(Node):
         if self.mode != Mode.GPS_NAV:
             return
         now_s = self.get_clock().now().nanoseconds * 1e-9
-        self.get_logger().warn(f"Last gps msg time {self._last_gps_msg_time}, inside the gps watchdog now_s: {now_s}")
 
-        if (now_s - self._last_gps_msg_time) > GPS_MSG_TIMEOUT_S:
+        if self._last_gps_msg_time is not None and (now_s - self._last_gps_msg_time) > GPS_MSG_TIMEOUT_S:
             self.get_logger().warn(
                 f"No GPS msg for >{GPS_MSG_TIMEOUT_S}s, falling back to VISION"
             )
@@ -252,7 +250,7 @@ class PathPlanningNode(Node):
         lat, lon, yaw = self.waypoints[self.wp_index]
         e, n = self.transformer.transform(lon, lat)
         pose = PoseStamped()
-        pose.header.frame_id = "hero"
+        pose.header.frame_id = "map"
         pose.header.stamp = self.get_clock().now().to_msg()
         pose.pose.position.x = e - self.datum_east
         pose.pose.position.y = n - self.datum_north
@@ -328,7 +326,7 @@ class PathPlanningNode(Node):
         # Build goal in camera frame, then transform to odom
         goal_cam = PoseStamped()
         goal_cam.header.stamp = data.header.stamp
-        goal_cam.header.frame_id = "zed_camera_link"
+        goal_cam.header.frame_id = "hero/rgb/front"
         goal_cam.pose.position.x = float(longitudinal_distance)
         goal_cam.pose.position.y = float(-lateral_distance)
         goal_cam.pose.orientation.w = 1.0
@@ -347,6 +345,11 @@ class PathPlanningNode(Node):
                 return
             self._current_goal = self._make_gps_goal()
 
+        if not self.tf_buffer.can_transform("map", "hero", rclpy.time.Time()):
+            return
+        if not self.initial_snap_done:
+                self._snap_wp_to_nearest_ahead()
+                self.initial_snap_done = True
         # In VISION mode, _current_goal is set by _seg_image_cb
 
         if self._current_goal is not None:
