@@ -6,7 +6,7 @@ path_planning_plus5, obstacle_avoidance, steering, throttle), and Nav2 with
 the RPP controller YAML.
 """
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import Node
@@ -18,6 +18,7 @@ NAV2_YAML = "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/confi
 
 
 def generate_launch_description() -> LaunchDescription:
+    force_color = SetEnvironmentVariable('RCUTILS_COLORIZED_OUTPUT', '1')
     odom_relay = Node(
         package="carla_ros_bridge", executable="carla_odom_relay",
         name="carla_odom_relay", output="screen",
@@ -47,6 +48,7 @@ def generate_launch_description() -> LaunchDescription:
         package="carla_ros_bridge", executable="carla_path_planning_plus5",
         name="carla_path_planning_plus5", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
+        arguments=['--ros-args', '--log-level', 'info']
     )
     obstacle_avoidance = Node(
         package="carla_ros_bridge", executable="carla_obstacle_avoidance",
@@ -65,10 +67,11 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     return LaunchDescription([
+        force_color,
         odom_relay,
         nav2,
         seg_node,
-        #path_planning_node,
+        path_planning_node,
         obstacle_avoidance,
         steering_control_node,
         throttle_node,

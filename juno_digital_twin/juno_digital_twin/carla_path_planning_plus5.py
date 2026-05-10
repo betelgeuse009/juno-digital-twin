@@ -76,7 +76,7 @@ class PathPlanningNode(Node):
         self.wp_index = 0
 
         # Mode
-        self.mode = Mode.GPS_NAV
+        self.mode = Mode.VISION
         now_s = self.get_clock().now().nanoseconds * 1e-9
         self._last_gps_msg_time = None 
         self._degraded_since = None
