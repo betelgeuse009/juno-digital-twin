@@ -1,8 +1,9 @@
 """CARLA simulation launch.
 
-Brings up RTABMAP depth SLAM, the carla_ros_bridge perception + planning +
-actuation pipeline (seg, path_planning_plus5, obstacle_avoidance, steering,
-throttle), and Nav2 with the RPP controller YAML.
+Brings up the carla_odom_relay (map→odom static + odom→hero dynamic TF),
+the carla_ros_bridge perception + planning + actuation pipeline (seg,
+path_planning_plus5, obstacle_avoidance, steering, throttle), and Nav2 with
+the RPP controller YAML.
 """
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
@@ -17,13 +18,10 @@ NAV2_YAML = "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/confi
 
 
 def generate_launch_description() -> LaunchDescription:
-    # RTABMAP depth SLAM (lives inside the carla_ros_bridge package)
-    rtabmap_include = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            PathJoinSubstitution([
-                FindPackageShare("carla_ros_bridge"), "rtabmap_depth.launch.py",
-            ])
-        ),
+    odom_relay = Node(
+        package="carla_ros_bridge", executable="carla_odom_relay",
+        name="carla_odom_relay", output="screen",
+        parameters=[{"use_sim_time": USE_SIM}],
     )
 
     # Nav2 with our RPP controller YAML
@@ -67,7 +65,7 @@ def generate_launch_description() -> LaunchDescription:
     )
 
     return LaunchDescription([
-        rtabmap_include,
+        odom_relay,
         nav2,
         seg_node,
         #path_planning_node,

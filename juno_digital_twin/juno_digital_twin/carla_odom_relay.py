@@ -21,7 +21,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
 from nav_msgs.msg import Odometry
-from tf2_ros import TransformBroadcaster
+from tf2_ros import TransformBroadcaster, StaticTransformBroadcaster
 from geometry_msgs.msg import TransformStamped
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -46,8 +46,17 @@ class CarlaOdomRelay(Node):
         self.initial_pose = None  # Will be set on first message
         self.initial_rotation_inv = None
 
-        # TF broadcaster
+        # TF broadcasters
         self.tf_broadcaster = TransformBroadcaster(self)
+
+        # Static identity: map -> odom (one-shot, latched)
+        self.static_tf_broadcaster = StaticTransformBroadcaster(self)
+        map_to_odom = TransformStamped()
+        map_to_odom.header.stamp = self.get_clock().now().to_msg()
+        map_to_odom.header.frame_id = 'map'
+        map_to_odom.child_frame_id = self.odom_frame
+        map_to_odom.transform.rotation.w = 1.0
+        self.static_tf_broadcaster.sendTransform(map_to_odom)
 
         # Publisher
         self.odom_pub = self.create_publisher(Odometry, output_topic, 30)

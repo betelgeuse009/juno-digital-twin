@@ -71,7 +71,7 @@ class PathPlanningNode(Node):
         self.datum_set = False
 
         # Waypoints
-        self.waypoints = self._load_waypoints("/home/bylogix/AD-SEM/track_waypoints_20260428_104318.csv")
+        self.waypoints = self._load_waypoints("/home/ubuntu/Workspace/ros-bridge/track_waypoints.csv")
         self.wp_index = 0
 
         # Mode

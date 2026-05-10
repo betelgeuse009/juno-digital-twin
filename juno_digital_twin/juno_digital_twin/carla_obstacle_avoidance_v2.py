@@ -11,7 +11,7 @@ from shared_objects.ROS_utils import Topics
 MAX_STEER_DEG = 10.0
 WHEELBASE = 1.6
 MS_TO_KMH = 3.6
-MIN_V_FOR_STEER = 0.3
+MIN_V_FOR_STEER = 0.3 # In m/s
 STEER_ALPHA = 0.3
 STEER_PERIOD_S = 0.14
 SPEED_PERIOD_S = 1.0
@@ -72,7 +72,7 @@ class ObstacleAvoidanceNode(Node):
         m = Float64()
         m.data = float(self._steer_filt_deg)
         self.steer_pub.publish(m)
-        self.get_logger().info(f"Sent Command: Steering degree raw: {self._steer_filt_deg} and filtered: {self._steer_target_deg}")
+        self.get_logger().info(f"Sent Command: Steering degree raw: {self._steer_target_deg} and filtered: {self._steer_filt_deg}")
 
     def _speed_timer(self):
         if not self._cmd_fresh():

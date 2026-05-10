@@ -53,10 +53,10 @@ controller_server:
       yaw_goal_tolerance: 0.5
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      desired_linear_vel: 5.56
-      lookahead_dist: 3.0
-      min_lookahead_dist: 1.5
-      max_lookahead_dist: 5.0
+      max_linear_vel: 5.56
+      lookahead_dist: 7.5
+      min_lookahead_dist: 2.5
+      max_lookahead_dist: 10.0
       lookahead_time: 1.0
       rotate_to_heading_angular_vel: 0.0
       use_velocity_scaled_lookahead_dist: true
@@ -113,7 +113,7 @@ global_costmap:
       use_sim_time: True
       update_frequency: 2.0
       publish_frequency: 2.0
-      global_frame: odom
+      global_frame: map
       robot_base_frame: hero
       footprint: "[[-0.443, -0.608], [-0.443, 0.608], [2.445, 0.608], [2.445, -0.608]]"
       footprint_padding: 0.1
@@ -154,7 +154,7 @@ planner_server:
       tolerance: 0.5
       downsample_costmap: false
       allow_unknown: true
-      minimum_turning_radius: 9.1
+      minimum_turning_radius: 9.1 # Rmin = Wheelbase/tan(max_degree°)  => 1.6/tan(10°)=9.074
       angle_quantization_bins: 72
 
 smoother_server:

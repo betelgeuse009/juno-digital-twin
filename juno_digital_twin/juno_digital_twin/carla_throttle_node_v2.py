@@ -34,11 +34,11 @@ class ThrottleSafeHyst(Node):
         self.logger = self.get_logger()
 
         # ---------- Tunable parameters -----------------
-        self.open_thresh      = -0.0      # km/h : open when speed ≤ open_thresh
+        self.open_thresh      = -1.0      # km/h : open when speed ≤ open_thresh
         self.close_thresh     = 0.0      # km/h : close when speed ≥ close_thresh
         self.throttle_cmd_val = 50.0     # value sent when valve is open
         self.open_timeout_sec = 2.5      # safety watchdog (seconds)
-        self.check_period     = 0.05     # watchdog / housekeeping period (s)
+        self.check_period     = 0.2     # watchdog / housekeeping period (s)
         # ------------------------------------------------
 
         # ---------------- Internal state ---------------
@@ -97,7 +97,7 @@ class ThrottleSafeHyst(Node):
     # ==================================================
     def cb_speed(self, msg: Float32):
         speed = msg.data
-        now   = time.time()
+        now   = self.get_clock().now()
 
         # --------- Decide if we should open ----------
         should_open = (not self._valve_open and
@@ -135,8 +135,10 @@ class ThrottleSafeHyst(Node):
     def watchdog(self):
         if not self._valve_open:
             return                                   # closed, nothing to do
-        if time.time() - self._last_open_ts >= self.open_timeout_sec:
+        if self.get_clock().now().nanoseconds* 1e-9 - self._last_open_ts.nanoseconds* 1e-9 >= self.open_timeout_sec:
             self._valve_open = False
+            self.close_thresh = self.open_thresh 
+            self.open_thresh = self.close_thresh - 2
             self.publish_throttle(0.0)
             self.get_logger().warn(
                 f"Safety timeout ({self.open_timeout_sec}s) reached → valve forced CLOSED")
