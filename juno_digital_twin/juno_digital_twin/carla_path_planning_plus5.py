@@ -27,7 +27,7 @@ GPS_MSG_TIMEOUT_S = 5.0
 MIN_RTK_STATUS = 2
 STDDEV_MAX_M = 0.1
 DEGRADE_DWELL_S = 3.0
-RECOVER_DWELL_S = 3.0
+RECOVER_DWELL_S = 300000.0
 
 
 class Mode(Enum):
@@ -78,7 +78,7 @@ class PathPlanningNode(Node):
         # Mode
         self.mode = Mode.VISION
         now_s = self.get_clock().now().nanoseconds * 1e-9
-        self._last_gps_msg_time = None 
+        self._last_gps_msg_time = now_s 
         self._degraded_since = None
         self._good_since = None
         self.initial_snap_done = False
@@ -323,21 +323,23 @@ class PathPlanningNode(Node):
                 degree_steering_angle = 10.0
             return
 
-        # Build goal in camera frame, then transform to odom
+        # hero/rgb_front is an optical frame: z=forward, x=right, y=down
+        self.get_logger().warn(f"Publishing goal in VISION mode: ({float(longitudinal_distance), float(-lateral_distance)})")
         goal_cam = PoseStamped()
-        goal_cam.header.stamp = data.header.stamp
-        goal_cam.header.frame_id = "hero/rgb/front"
-        goal_cam.pose.position.x = float(longitudinal_distance)
-        goal_cam.pose.position.y = float(-lateral_distance)
+        goal_cam.header.stamp = rclpy.time.Time().to_msg()
+        goal_cam.header.frame_id = "hero/rgb_front"
+        goal_cam.pose.position.x = float(-lateral_distance)
+        goal_cam.pose.position.y = 0.0
+        goal_cam.pose.position.z = float(longitudinal_distance)
         goal_cam.pose.orientation.w = 1.0
 
-        try:
+        try: # fuck carlas tf structure
             goal_odom = self.tf_buffer.transform(
-                goal_cam, "odom", timeout=Duration(seconds=0.1)
+                goal_cam, "map", timeout=Duration(seconds=0.1)
             )
             self._current_goal = goal_odom
         except Exception as e:
-            self.get_logger().warn(f"TF camera->odom failed: {e}")
+            self.get_logger().warn(f"TF camera->map failed: {e}")
 
     def _goal_timer_cb(self):
         if self.mode == Mode.GPS_NAV:
