@@ -11,7 +11,7 @@ from shared_objects.ROS_utils import Topics
 MAX_STEER_DEG = 10.0
 WHEELBASE = 1.6
 MS_TO_KMH = 3.6
-MIN_V_FOR_STEER = 0.3 # In m/s
+MIN_V_FOR_STEER = 0.5 # In m/s
 STEER_ALPHA = 0.3
 STEER_PERIOD_S = 0.14
 SPEED_PERIOD_S = 1.0

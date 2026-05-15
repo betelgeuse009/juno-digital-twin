@@ -71,7 +71,7 @@ def generate_launch_description() -> LaunchDescription:
         odom_relay,
         nav2,
         seg_node,
-        path_planning_node,
+        #path_planning_node,
         obstacle_avoidance,
         steering_control_node,
         throttle_node,
