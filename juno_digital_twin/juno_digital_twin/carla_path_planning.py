@@ -3,7 +3,7 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Float32
 from cv_bridge import CvBridge
 import math
 from datetime import datetime
@@ -15,7 +15,7 @@ from pathlib import Path
 from shared_objects.ROS_utils import Topics, SHOW
 from rclpy.qos import qos_profile_sensor_data
 
-from shared_objects.utils_path import computing_lateral_distance, processing_mask
+from shared_objects.new_utils import computing_lateral_distance, processing_mask
 import cv2
 
 
@@ -28,15 +28,15 @@ class PathPlanningNode(Node):
     def __init__(self):
         super().__init__('path_planning_node')
         self.wheelbase = 1.6
-        self.speed = 15.0
-        self.gain = 0
+        self.speed = 6.0
+        self.gain = 1.1
         self.DEBUG = True
 
         self.image_sub = self.create_subscription(Image, topic_names['segmented_image'], self.image_callback, 10)
         self.original_image_sub = self.create_subscription(Image, '/carla/hero/rgb_front/image', self.original_image_callback, qos_profile_sensor_data)
 
         self.steer_pub = self.create_publisher(Float64, topic_names['steering'], 10)
-        self.req_speed_pub = self.create_publisher(Float64, topic_names['requested_speed'], 10)
+        self.req_speed_pub = self.create_publisher(Float32, topic_names['requested_speed'], 10)
         self.bev_pub = self.create_publisher(Image, "/birds_eye_view", 10)
 
         self.bridge = CvBridge()
@@ -55,7 +55,7 @@ class PathPlanningNode(Node):
             self.logs_folder, self.output_folder, self.frames_folder = self.set_debug_folders()
 
         # Initial speed
-        req_speed_msg = Float64()
+        req_speed_msg = Float32()
         req_speed_msg.data = self.speed
         self.req_speed_pub.publish(req_speed_msg)
 

@@ -134,7 +134,7 @@ def mouse_callback(event, x, y, flags, param):
 
 
 image_path = os.path.expanduser(
-    "/home/ubuntu/Workspace/ros-bridge/src/DEBUG/2026_05_04_17_40_08_plus3/frames/frame_7.png")
+    "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/calibration_setup/frame_0.png")
 original_image = cv.imread(image_path)
 
 if original_image is None:

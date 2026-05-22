@@ -40,7 +40,7 @@ controller_server:
     min_y_velocity_threshold: 0.01
     min_theta_velocity_threshold: 0.01
     failure_tolerance: 0.3
-    progress_checker_plugin: ["progress_checker"]
+    progress_checker_plugins: ["progress_checker"]
     goal_checker_plugins: ["general_goal_checker"]
     path_handler_plugins: ["PathHandler"]
     controller_plugins: ["FollowPath"]
@@ -51,19 +51,19 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 5.0
-      yaw_goal_tolerance: 0.2 # 1 radian 57 degrees
+      xy_goal_tolerance: 3.0
+      yaw_goal_tolerance: 0.3 # 1 radian 57 degrees
     path_handler:
       plugin: "nav2_controller::FeasiblePathHandler"
       prune_distance: 5.56  # maximum velocity projection forward, threshold to consider
       minimum_rotation_angle: 0.785 # The minimum accumulated rotation (in radians) required to classify a segment as an in-place rotation. 0.785 rad = 45 deg.
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      desired_linear_vel: 2.78 # in m/s 
+      desired_linear_vel: 1.78 # in m/s 
       lookahead_dist: 7.5
-      min_lookahead_dist: 2.5
+      min_lookahead_dist: 5.0
       max_lookahead_dist: 10.0
-      lookahead_time: 1.0
+      lookahead_time: 1.8
       rotate_to_heading_angular_vel: 0.0
       use_velocity_scaled_lookahead_dist: true
       min_approach_linear_velocity: 0.5
@@ -110,7 +110,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 10.0
-        inflation_radius: 1.56
+        inflation_radius: 3.00
       always_send_full_costmap: True
 
 global_costmap:
@@ -147,7 +147,7 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 10.0
-        inflation_radius: 1.0
+        inflation_radius: 3.0
       always_send_full_costmap: True
 
 planner_server:
@@ -166,6 +166,7 @@ planner_server:
       cache_obstacle_heuristic: true # Since the obstacles are static
       goal_heading_mode: ALL_DIRECTION # DEFAULT meaning same orientation by the goal, BIDIRECTIONAL, ALL_DIRECTION
       minimum_turning_radius: 9.1 # Rmin = Wheelbase/tan(max_degree°)  => 1.6/tan(10°)=9.074
+      analytic_expansion_max_length: 45.0
       angle_quantization_bins: 72
 
 smoother_server:

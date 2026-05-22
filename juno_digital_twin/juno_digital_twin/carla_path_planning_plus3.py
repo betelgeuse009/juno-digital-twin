@@ -26,7 +26,7 @@ class PathPlanningNode(Node):
 
         self.debug = self.declare_parameter('debug', True).value
         self.wheelbase = self.declare_parameter('wheelbase', 1.6).value
-        self.gain = self.declare_parameter('gain', 0.0).value
+        self.gain = self.declare_parameter('gain', 1.1).value
 
         self.costmap_has_obstacles = False
         self.goal_published = False

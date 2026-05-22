@@ -18,7 +18,7 @@ LANE_METERS = 10
 
 # WARNING These pixel rows (515 and 580) MUST be recalculated physically
 Y_METERS = {10.0: 222,
-            7.5: 411, 
+            7.5: 550, 
             }
 
 LANE_PIXELS = None

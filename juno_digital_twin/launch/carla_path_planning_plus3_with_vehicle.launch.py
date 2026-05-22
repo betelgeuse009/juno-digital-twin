@@ -51,7 +51,7 @@ def generate_launch_description():
     ld.add_action(seg_node)
     ld.add_action(throttle_node)
     ld.add_action(steering_control_node)
-    ld.add_action(old_obstacle_avoidance)
+    #ld.add_action(old_obstacle_avoidance)
 
     return ld
 
