@@ -12,8 +12,7 @@ MAX_STEER_DEG = 10.0
 WHEELBASE = 1.6
 MS_TO_KMH = 3.6
 MIN_V_FOR_STEER = 0.5 # In m/s
-STEER_ALPHA = 0.3
-STEER_PERIOD_S = 0.14
+STEER_PERIOD_S = 0.5
 SPEED_PERIOD_S = 1.0
 CMD_VEL_STALE_S = 0.5
 
@@ -30,7 +29,6 @@ class ObstacleAvoidanceNode(Node):
         self.create_subscription(Twist, "/cmd_vel", self._cmd_vel_cb, 1)
 
         self._steer_target_deg = 0.0
-        self._steer_filt_deg = 0.0
         self._speed_kmh = 0.0
         self._last_cmd_time = None
 
@@ -65,14 +63,10 @@ class ObstacleAvoidanceNode(Node):
     def _steer_timer(self):
         if not self._cmd_fresh():
             return
-        self._steer_filt_deg = (
-            STEER_ALPHA * self._steer_target_deg
-            + (1.0 - STEER_ALPHA) * self._steer_filt_deg
-        )
         m = Float64()
-        m.data = float(self._steer_filt_deg)
+        m.data = float(self._steer_target_deg)
         self.steer_pub.publish(m)
-        self.get_logger().info(f"Sent Command: Steering degree raw: {self._steer_target_deg} and filtered: {self._steer_filt_deg}")
+        self.get_logger().info(f"Sent Command: Steering degree raw: {self._steer_target_deg} ")
 
     def _speed_timer(self):
         if not self._cmd_fresh():
