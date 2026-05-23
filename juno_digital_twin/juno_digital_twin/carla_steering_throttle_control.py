@@ -51,6 +51,7 @@ class CarlaSimBridge(Node):
         # In CARLA: -1.0 is Left, +1.0 is Right (Standard). 
         # so need to verify if path planner outputs positive for Left or Right.
         val = msg.data / self.max_steer 
+        self.get_logger().warn(f"Received steering angle={val}={msg.data}/{self.max_steer}")
         self.current_steer = np.clip(val, -1.0, 1.0)
 
     def stop_callback(self, msg):

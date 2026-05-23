@@ -37,7 +37,7 @@ controller_server:
     controller_frequency: 10.0
     publish_zero_velocity: false
     min_x_velocity_threshold: 0.01
-    min_y_velocity_threshold: 0.01
+    min_y_velocity_threshold: 0.5
     min_theta_velocity_threshold: 0.01
     failure_tolerance: 0.3
     progress_checker_plugins: ["progress_checker"]
@@ -64,14 +64,16 @@ controller_server:
       min_lookahead_dist: 5.0
       max_lookahead_dist: 10.0
       lookahead_time: 1.8
-      rotate_to_heading_angular_vel: 0.0
-      use_velocity_scaled_lookahead_dist: true
-      min_approach_linear_velocity: 0.5
-      approach_velocity_scaling_dist: 1.0
+      use_velocity_scaled_lookahead_dist: true #set it to false to tune pure pursuit 
+      min_approach_linear_velocity: 0.1 # The minimum velocity (m/s) threshold to apply when approaching the goal to ensure progress
+      approach_velocity_scaling_dist: 1.0 # needs to be tuned The distance (m) left on the path at which to start slowing down. Should be less than the half the costmap width.
       use_collision_detection: true
-      max_allowed_time_to_collision_up_to_carrot: 1.0
-      use_regulated_linear_velocity_scaling: true
-      regulated_linear_scaling_min_radius: 9.1
+      max_allowed_time_to_collision_up_to_carrot: 2.0
+      use_regulated_linear_velocity_scaling: true # Whether to use the regulated features for curvature
+      use_cost_regulated_linear_velocity_scaling: true #set it to false to tune pure pursuit 
+      cost_scaling_dist: 2.0 # read and try from here
+      cost_scaling_gain: 1.0
+      regulated_linear_scaling_min_radius: 2.5 # needs to be tested
       regulated_linear_scaling_min_speed: 1.0
       use_rotate_to_heading: false
       max_angular_accel: 0.5
@@ -165,8 +167,8 @@ planner_server:
       debug_visualizations: true # pretty heavy disable if not debug to show expansions and footprint
       cache_obstacle_heuristic: true # Since the obstacles are static
       goal_heading_mode: ALL_DIRECTION # DEFAULT meaning same orientation by the goal, BIDIRECTIONAL, ALL_DIRECTION
-      minimum_turning_radius: 9.1 # Rmin = Wheelbase/tan(max_degree°)  => 1.6/tan(10°)=9.074
-      analytic_expansion_max_length: 45.0
+      minimum_turning_radius: 1.9 # Rmin = Wheelbase/tan(max_degree°)  => 1.6/tan(10°)=9.074
+      analytic_expansion_max_length: 10.0
       angle_quantization_bins: 72
 
 smoother_server:

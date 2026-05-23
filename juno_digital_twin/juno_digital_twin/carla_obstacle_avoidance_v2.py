@@ -43,6 +43,7 @@ class ObstacleAvoidanceNode(Node):
     def _cmd_vel_cb(self, msg: Twist):
         v = msg.linear.x
         omega = msg.angular.z
+        self.get_logger().warn(f'Received linear x velocity {v*MS_TO_KMH:.2f}km/h, Received angular z velocity {omega*57.3:.2f}°/s')
 
         if abs(v) < MIN_V_FOR_STEER:
             steer_deg = 0.0
@@ -50,7 +51,11 @@ class ObstacleAvoidanceNode(Node):
             steer_deg = math.degrees(math.atan(WHEELBASE * omega / v))
         steer_deg = max(-MAX_STEER_DEG, min(MAX_STEER_DEG, steer_deg))
 
-        self._steer_target_deg = steer_deg
+        # CARLA assumes left is - and right is + 
+        # but ROS2 standard controller assumes the opposite(also opposite to our base_path_planning
+        # which is fine with CARLA but not on ROS conventions)
+        # Thats why I'm putting a minus when we receive the steering angle from Nav2 controller
+        self._steer_target_deg = -steer_deg
         self._speed_kmh = abs(v) * MS_TO_KMH
         self._last_cmd_time = self.get_clock().now().nanoseconds * 1e-9
 

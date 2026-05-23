@@ -14,7 +14,7 @@ import os
 #       Modifica della longitudinal distance quando ci approcciamo ad una curva
 
 SIMULATION = False
-LANE_METERS = 10
+LANE_METERS = 12
 
 # WARNING These pixel rows (515 and 580) MUST be recalculated physically
 Y_METERS = {10.0: 222,
