@@ -5,13 +5,13 @@ import math
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from std_msgs.msg import Float64, Float32
+from std_msgs.msg import Float64, Float32, Bool
 from shared_objects.ROS_utils import Topics
 
 MAX_STEER_DEG = 10.0
 WHEELBASE = 1.6
 MS_TO_KMH = 3.6
-MIN_V_FOR_STEER = 0.5 # In m/s
+MIN_V_FOR_STEER = 0.2 # In m/s
 STEER_PERIOD_S = 0.1
 SPEED_PERIOD_S = 1.0
 CMD_VEL_STALE_S = 0.5
@@ -27,6 +27,7 @@ class ObstacleAvoidanceNode(Node):
         self.steer_pub = self.create_publisher(Float64, tn["steering"], 1)
         self.speed_pub = self.create_publisher(Float32, tn["requested_speed"], 1)
         self.create_subscription(Twist, "/cmd_vel", self._cmd_vel_cb, 1)
+        self.create_subscription(Bool, "/nav_mode", self._nav_mode_cb,1)
 
         self._steer_target_deg = 0.0
         self._speed_kmh = 0.0
@@ -39,6 +40,11 @@ class ObstacleAvoidanceNode(Node):
             f"Bridge: /cmd_vel -> {tn['steering']} @ {1/STEER_PERIOD_S:.1f}Hz, "
             f"{tn['requested_speed']} @ {1/SPEED_PERIOD_S:.1f}Hz"
         )
+
+    def _nav_mode_cb(self, msg: Bool):
+        if msg.data != self._nav_mode:
+            self.get_logger().info(f"nav_mode {self._nav_mode} => {msg.data}")
+        self._nav_mode = msg.data
 
     def _cmd_vel_cb(self, msg: Twist):
         v = msg.linear.x

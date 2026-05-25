@@ -15,10 +15,13 @@ from tf2_ros import Buffer, TransformListener
 from shared_objects.new_utils import computing_lateral_distance, processing_mask
 from shared_objects.ROS_utils import Topics, SHOW
 from nav_msgs.msg import OccupancyGrid
-from std_msgs.msg import Float32, Float64
+from std_msgs.msg import Float32, Float64, Bool
 import tf2_geometry_msgs
 from pathlib import Path 
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import qos_profile_sensor_data, QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
+
+from rclpy.action import ActionClient
+from nav2_msgs.action import NavigateToPose
 
 class PathPlanningNode(Node):
     def __init__(self):
@@ -28,7 +31,6 @@ class PathPlanningNode(Node):
         self.wheelbase = self.declare_parameter('wheelbase', 1.6).value
         self.gain = self.declare_parameter('gain', 1.1).value
 
-        self.costmap_has_obstacles = False
         self.goal_published = False
         self.declare_parameter(
             'debug_root',
@@ -57,30 +59,110 @@ class PathPlanningNode(Node):
         
         
         # Publisher
-        self.goal_pub = self.create_publisher(PoseStamped, '/goal_pose',1)
         self.steer_pub = self.create_publisher(Float64, self.topic_names["steering"], 1)
         self.bev_pub = self.create_publisher(Image, "/birds_eye_view", 10)
+        
+        # Nav2 action client
+        self.nav_action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        
+        latched_qos = QoSProfile(depth=1,
+            durability=QoSDurabilityPolicy.TRANSIENT_LOCAL,
+            reliability=QoSReliabilityPolicy.RELIABLE)
+        self.nav_mode_pub = self.create_publisher(Bool, '/nav_mode', latched_qos)
+        
 
-        
-        self._latest_goal = None
-        self._goal_timer = self.create_timer(2.0, self._goal_timer_callback)
-        
+        # state machine bookkeeping
+        self._in_obs_mode = False
+        self._current_goal_handle = None
+        self._last_sent_goal = None 
+        # costmap filtering values 
+        self.LETHAL_THRESHOLD = 90      # cells with cost >= this count as obstacle
+        self.MIN_LETHAL_CELLS = 3       # need >= N lethal cells
+        self.CONSECUTIVE_FRAMES = 3     # require N agreeing frames
+        self.GOAL_UPDATE_DIST_M = 5.0   # only update active goal if target moved > this
+        # added this because we saw from track test that it was too easy to switch from noise
+        self._raw_obstacle_history = [False, False, False]
 
         if self.debug:
             self.logs_folder, self.output_folder, self.frames_folder = self.set_debug_folders()
         self.get_logger().info("PathPlanningPlus3 initialized (Nav2 action client)")
-
-    def _goal_timer_callback(self):
-        if self._latest_goal is None:
-            return
-        self.goal_pub.publish(self._latest_goal)
-        self._latest_goal = None
-
-
+    
     def costmap_callback(self, msg: OccupancyGrid):
-        data = np.array(msg.data, dtype=np.int8)
-        self.costmap_has_obstacles = bool(np.any(data > 0))
-        
+        data = np.frombuffer(bytes(msg.data), dtype=np.int8)  # faster than np.array on list
+        raw = int(np.sum(data >= self.LETHAL_THRESHOLD)) >= self.MIN_LETHAL_CELLS
+        self._raw_obstacle_history.append(raw)
+        self._raw_obstacle_history.pop(0)
+        # Only flip when all recent frames agree
+        if all(self._raw_obstacle_history) and not self._in_obs_mode:
+            self._enter_obs_mode()
+        elif not any(self._raw_obstacle_history) and self._in_obs_mode:
+            self._exit_obs_mode()        
+
+    def _enter_obs_mode(self):
+        self.get_logger().warn("OBSTACLE_AVOID")
+        self._in_obs_mode = True
+        m = Bool(); m.data = True
+        self.nav_mode_pub.publish(m)
+        # actual goal is sent on the next valid image_callback
+
+    def _exit_obs_mode(self):
+        self.get_logger().info("LANE_FOLLOW")
+        # cancel first, then flip the bridge off
+        if self._current_goal_handle is not None:
+            cancel_future = self._current_goal_handle.cancel_goal_async()
+            cancel_future.add_done_callback(self._after_cancel)
+        else:
+            self._after_cancel(None)
+
+    def _after_cancel(self, _future):
+        self._current_goal_handle = None
+        self._last_sent_goal = None
+        self._in_obs_mode = False
+        m = Bool(); m.data = False
+        self.nav_mode_pub.publish(m)
+
+    def _send_goal(self, pose_map: PoseStamped):
+        if not self.nav_action_client.server_is_ready():
+            # Cheap non-blocking check; wait_for_server would block the executor
+            self.get_logger().warn("Nav2 action server not ready, skipping goal send")
+            return
+
+        goal_msg = NavigateToPose.Goal()
+        goal_msg.pose = pose_map
+        goal_msg.behavior_tree = ''   # use bt_navigator default (your custom XML)
+
+        send_future = self.nav_action_client.send_goal_async(
+            goal_msg,
+            feedback_callback=self._nav_feedback_cb,
+        )
+        send_future.add_done_callback(self._goal_response_cb)
+        self._last_sent_goal = pose_map
+        self.get_logger().info(
+            f"Sent Nav2 goal: x={pose_map.pose.position.x:.2f}, "
+            f"y={pose_map.pose.position.y:.2f}"
+        )
+
+        def _goal_response_cb(self, future):
+            goal_handle = future.result()
+            if not goal_handle.accepted:
+                self.get_logger().error("Nav2 goal rejected")
+                self._current_goal_handle = None
+                return
+            self._current_goal_handle = goal_handle
+            result_future = goal_handle.get_result_async()
+            result_future.add_done_callback(self._goal_result_cb)
+
+        def _goal_result_cb(self, future):
+            status = future.result().status
+            # 4 = SUCCEEDED, 5 = CANCELED, 6 = ABORTED
+            self.get_logger().info(f"Nav2 goal finished with status={status}")
+            self._current_goal_handle = None
+            # Don't auto-exit obs mode here — let the costmap callback decide.
+            # The goal will be re-sent on the next image_callback if obstacles persist.
+
+        def _nav_feedback_cb(self, feedback_msg):
+            # Optional: log distance_remaining, navigation_time
+            pass
 
     def set_debug_folders(self):
         try:
@@ -132,35 +214,42 @@ class PathPlanningNode(Node):
             cv2.circle(line_edges, tuple(posm[::-1]), 2, (255, 255, 255), 5)
 
         if lateral_distance == -np.inf:
-            self.get_logger().warn("Lane lost, emergency steering angle -10.0") 
-            degree_steering_angle = -10.0
+            self.get_logger().warn("Lane lost, emergency steering angle +10.0") 
+            degree_steering_angle = 10.0
 
         elif lateral_distance == np.inf:
-            self.get_logger().warn("Lane lost, emergency steering angle 10.0") 
-            degree_steering_angle = 10.0
+            self.get_logger().warn("Lane lost, emergency steering angle -10.0") 
+            degree_steering_angle = -10.0
         else:
             degree_steering_angle = None
 
 
-        if self.costmap_has_obstacles:
+        if self._in_obs_mode:
+            self.get_logger().info("Obstacles found switching to obstacle avoidance mode")
             if lateral_distance in (-np.inf, np.inf):
                 self.get_logger().warn("Obstacles are present but lane lost")
                 return
             # Build goal in camera_link frame, then transform to map
             goal_camera = PoseStamped()
-            goal_camera.header.stamp =data.header.stamp  
-            goal_camera.header.frame_id = "hero/rgb_front"
-            goal_camera.pose.position.x = float(longitudinal_distance)
-            goal_camera.pose.position.y = float(-lateral_distance)
+            goal_camera.header.stamp = self.get_clock().now().to_msg()
+            goal_camera.header.frame_id = "hero"
+            goal_camera.pose.position.x = 15.0
+            goal_camera.pose.position.y = 0.0
+            goal_camera.pose.position.z = 0.0
+            goal_camera.pose.orientation.x = 0.0
+            goal_camera.pose.orientation.y = 0.0
+            goal_camera.pose.orientation.z = 0.0
             goal_camera.pose.orientation.w = 1.0
 
             try:
                 goal_map = self.tf_buffer.transform(goal_camera, "map",
-                                                    timeout=rclpy.duration.Duration(seconds=0.1))
+                                                    timeout=rclpy.duration.Duration(seconds=0.2))
             except Exception as e:
                 self.get_logger().warn(f"TF camera->map failed: {e}")
                 return
-
+            self._latest_goal = goal_map
+            if self._should_update_goal(goal_map):
+                self._send_goal(goal_map)
             self._latest_goal = goal_map
             self.goal_published = True
             
@@ -174,10 +263,18 @@ class PathPlanningNode(Node):
             steer_msg = Float64()
             steer_msg.data = degree_steering_angle
             self.steer_pub.publish(steer_msg)
+            self.get_logger().info(f"Published steering angle: {degree_steering_angle}, Lookahead distance: {longitudinal_distance}")
         if self.debug:
             self._save_debug(mask, line_edges, lateral_distance,
                              longitudinal_distance, midpoints, degree_steering_angle)
             
+    def _should_update_goal(self, new_goal: PoseStamped) -> bool:
+        if self._last_sent_goal is None:
+            return True
+        dx = new_goal.pose.position.x - self._last_sent_goal.pose.position.x
+        dy = new_goal.pose.position.y - self._last_sent_goal.pose.position.y
+        return (dx*dx + dy*dy) > (self.GOAL_UPDATE_DIST_M ** 2)
+
     def _save_debug(self, mask, line_edges, lateral_distance,
                     longitudinal_distance, midpoints, degree_steering_angle):
         if midpoints is not None:

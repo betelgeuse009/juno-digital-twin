@@ -103,7 +103,7 @@ local_costmap:
           topic: /carla/hero/semantic_lidar
           data_type: "PointCloud2"
           expected_update_rate: 5.0
-          obstacle_max_range: 15.0   # Maximum range to mark obstacles (meters)
+          obstacle_max_range: 20.0   # Maximum range to mark obstacles (meters)
           raytrace_range: 100.0   # Maximum range to clear free space (meters)
           marking: True
           clearing: True
@@ -140,7 +140,7 @@ global_costmap:
           topic: /carla/hero/semantic_lidar
           data_type: "PointCloud2"
           expected_update_rate: 5.0
-          obstacle_max_range: 15.0   # Maximum range to mark obstacles (meters)
+          obstacle_max_range: 20.0   # Maximum range to mark obstacles (meters)
           raytrace_range: 100.0   # Maximum range to clear free space (meters)
           marking: True
           clearing: True
