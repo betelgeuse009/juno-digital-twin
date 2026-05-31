@@ -31,7 +31,6 @@ class PathPlanningNode(Node):
         self.wheelbase = self.declare_parameter('wheelbase', 1.6).value
         self.gain = self.declare_parameter('gain', 1.1).value
 
-        self.goal_published = False
         self.declare_parameter(
             'debug_root',
             '/home/ubuntu/Workspace/ros-bridge/src/DEBUG'   # default
@@ -250,11 +249,8 @@ class PathPlanningNode(Node):
             self._latest_goal = goal_map
             if self._should_update_goal(goal_map):
                 self._send_goal(goal_map)
-            self._latest_goal = goal_map
-            self.goal_published = True
             
         else:
-            self.goal_published = False
             self._latest_goal = None
             if degree_steering_angle is None:
                 # Pure pursuit angle
