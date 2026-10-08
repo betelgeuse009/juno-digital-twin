@@ -35,9 +35,6 @@ On top of the original lane-following pipeline, the twin adds a **Nav2-based obs
   <a href="docs/media/architecture.svg"><img src="docs/media/architecture.png" alt="Juno digital twin architecture: CARLA ⇄ ROS 2 bridge → perception → planning (Nav2) → control and actuation" width="100%"></a>
 </p>
 
-<sub>Diagram source: <a href="docs/media/architecture.mmd"><code>docs/media/architecture.mmd</code></a>. Regenerate with
-<code>npx -y @mermaid-js/mermaid-cli -i docs/media/architecture.mmd -c docs/media/mermaid-config.json -b white -s 3 -o docs/media/architecture.png</code></sub>
-
 ## What I built
 
 - **Sim-to-real port of the Juno stack.** I ported the team's perception, stop-sign, throttle, and steering nodes from the real vehicle's hardware (ZED 2i, CAN steppers) to CARLA sensors and `CarlaEgoVehicleControl`, while keeping the real car's topic interface.
