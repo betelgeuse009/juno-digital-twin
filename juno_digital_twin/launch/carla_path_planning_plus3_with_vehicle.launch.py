@@ -13,7 +13,7 @@ NAV2_YAML = "/home/ubuntu/Workspace/ros-bridge/src/carla_ros_bridge/launch/confi
 def generate_launch_description() -> LaunchDescription:
     force_color = SetEnvironmentVariable('RCUTILS_COLORIZED_OUTPUT', '1')
     odom_relay = Node(
-        package="carla_ros_bridge", executable="carla_odom_relay",
+        package="juno_digital_twin", executable="carla_odom_relay",
         name="carla_odom_relay", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
     )
@@ -33,28 +33,28 @@ def generate_launch_description() -> LaunchDescription:
 
     # carla_ros_bridge pipeline
     seg_node = Node(
-        package="carla_ros_bridge", executable="carla_segnode",
+        package="juno_digital_twin", executable="carla_segnode",
         name="carla_segnode", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
     )
     path_planning_node_plus3 = Node(
-        package="carla_ros_bridge", executable="carla_path_planning_plus3",
+        package="juno_digital_twin", executable="carla_path_planning_plus3",
         name="carla_path_planning_plus3", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
         arguments=['--ros-args', '--log-level', 'info']
     )
     obstacle_avoidance = Node(
-        package="carla_ros_bridge", executable="carla_obstacle_avoidance",
+        package="juno_digital_twin", executable="carla_obstacle_avoidance",
         name="carla_obstacle_avoidance_old", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
     )
     steering_control_node = Node(
-        package="carla_ros_bridge", executable="carla_steering_throttle_control",
+        package="juno_digital_twin", executable="carla_steering_throttle_control",
         name="carla_steering_throttle_control", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
     )
     throttle_node = Node(
-        package="carla_ros_bridge", executable="carla_throttle_node_v2",
+        package="juno_digital_twin", executable="carla_throttle_node_v2",
         name="carla_throttle_node_v2", output="screen",
         parameters=[{"use_sim_time": USE_SIM}],
     )

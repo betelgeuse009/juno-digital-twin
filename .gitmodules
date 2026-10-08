@@ -1,0 +1,9 @@
+[submodule "rtabmap_ros"]
+	path = rtabmap_ros
+	url = https://github.com/AutonomousDrivingH2politO/rtabmap_ros.git
+[submodule "shared_objects/shared_objects/TwinLiteNetPlus"]
+	path = shared_objects/shared_objects/TwinLiteNetPlus
+	url = https://github.com/chequanghuy/TwinLiteNetPlus.git
+[submodule "shared_objects/shared_objects/HybridNets"]
+	path = shared_objects/shared_objects/HybridNets
+	url = https://github.com/datvuthanh/HybridNets.git

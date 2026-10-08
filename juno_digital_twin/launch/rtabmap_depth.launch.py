@@ -13,7 +13,7 @@ def generate_launch_description() -> LaunchDescription:
     # into relative odometry (frame_id='odom', starting at vehicle spawn).
     # Also publishes odom -> hero TF.
     odom_relay = LaunchNode(
-        package="carla_ros_bridge",             
+        package="juno_digital_twin",             
         executable="carla_odom_relay",
         name="carla_odom_relay",
         parameters=[{

@@ -86,26 +86,26 @@ def generate_launch_description():
             }.items()
         ),
          Node(
-            package='carla_ros_bridge',
+            package='juno_digital_twin',
             executable='carla_path_planning_plus2',
             name='carla_path_planning_plus2',
             output='screen',
         ),
         Node(
-            package='carla_ros_bridge',
+            package='juno_digital_twin',
             executable='carla_segnode',
             name='carla_segnode',
             output='screen',
         ),
         Node(
-            package='carla_ros_bridge',
+            package='juno_digital_twin',
             executable='carla_throttle_node',
             name='carla_throttle_node',
             output='screen',
         ),
     
         Node(
-            package='carla_ros_bridge',
+            package='juno_digital_twin',
             executable='carla_steering_throttle_control',
             name='carla_steering_throttle_control',
             output='screen',

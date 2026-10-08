@@ -86,7 +86,7 @@ def generate_launch_description():
             }.items()
         ),
         Node(
-            package='carla_ros_bridge',
+            package='juno_digital_twin',
             executable='carla_segnode',
             name='carla_segnode',
             output='screen',
