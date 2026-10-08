@@ -27,7 +27,7 @@ Built for the **[H2politO](https://areeweb.polito.it/didattica/h2polito/)** Shel
 
 Testing planning and obstacle avoidance on the real vehicle is slow, risky, and depends on track time. **This repository is a digital twin of that stack in the [CARLA](https://carla.org/) simulator.** The perception, planning, and control nodes are ported to run against simulated sensors. Topic names and command interfaces match the real vehicle, such as the steering angle in degrees, the throttle-valve command, and the stop/brake flag. That way, algorithms developed here carry over to the car with minimal changes.
 
-On top of the original lane-following pipeline, the twin adds a **Nav2-based obstacle-avoidance layer**. It uses a costmap built from the vehicle's sensors, a Hybrid-A\* planner, and a tuned Regulated Pure Pursuit controller, all configured for an Ackermann car with no reverse gear.
+On top of the original lane-following pipeline, the twin also runs the Nav2 obstacle-avoidance layer (Smac Hybrid-A*, Regulated Pure Pursuit, custom behaviour trees). It has been tested both in simulation and on JUNO but is not yet stable enough for competition use; the race configuration used the vision-based lane-following pipeline
 
 ## Architecture
 
