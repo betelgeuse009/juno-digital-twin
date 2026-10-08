@@ -1,0 +1,63 @@
+flowchart LR
+    subgraph SIM["CARLA 0.9.15 · custom track map"]
+        V["<b>Ego vehicle 'hero'</b><br/>RGB · semantic seg · depth · GNSS"]
+    end
+
+    BR(("<b>carla_ros_bridge</b><br/>ROS 2"))
+    SIM <--> BR
+
+    subgraph PERC["Perception & state"]
+        direction TB
+        ODOM["<b>carla_odom_relay</b><br/>map → odom → hero TF"]
+        SEG["<b>carla_segnode</b><br/>TwinLiteNet+ · HybridNets ·<br/>CARLA semantic camera"]
+        STOP["<b>carla_stop_node</b><br/>stop-sign detection"]
+    end
+
+    subgraph PLANG["Planning"]
+        direction TB
+        PLAN["<b>carla_path_planning_plus5</b><br/>GNSS waypoints ⇄ vision goals<br/>(BEV lane midpoints)"]
+        subgraph NAV2["Nav2"]
+            direction TB
+            BT["Custom Juno<br/>behaviour tree"]
+            CM["Local / global<br/>costmaps"]
+            PL["Smac Hybrid-A*<br/>planner"]
+            CTRL["Regulated Pure Pursuit<br/>(MPPI alternative)"]
+        end
+    end
+
+    subgraph CTL["Control & actuation"]
+        direction TB
+        OA["<b>carla_obstacle_avoidance</b><br/>/cmd_vel → steering° + speed"]
+        THR["<b>carla_throttle_node_v2</b><br/>hysteresis + watchdog"]
+        ACT["<b>carla_steering_throttle_control</b><br/>→ CarlaEgoVehicleControl"]
+    end
+
+    BR --> ODOM & SEG & STOP & PLAN & CM
+    SEG -->|segmented image| PLAN
+    PLAN -->|/goal_pose| BT
+    BT --> PL --> CTRL
+    CM --> PL & CTRL
+    CTRL -->|/cmd_vel| OA
+    OA -->|commands/KalmanAngle| ACT
+    OA -->|requested_speed| THR
+    THR -->|/ECU/throttle| ACT
+    STOP -->|commands/stop| ACT & THR
+    ACT ==>|vehicle_control_cmd| BR
+
+    classDef sim fill:#e8f1ff,stroke:#1f6feb,color:#0b2a5b
+    classDef bridge fill:#22314E,stroke:#22314E,color:#ffffff
+    classDef perc fill:#e9f7ef,stroke:#2e9e5b,color:#123d24
+    classDef plan fill:#fff4e0,stroke:#d98a00,color:#4a2e00
+    classDef nav fill:#fdecea,stroke:#d0453a,color:#4a1410
+    classDef ctl fill:#f1ebfb,stroke:#7a4cc2,color:#2a1450
+    class V sim
+    class BR bridge
+    class ODOM,SEG,STOP perc
+    class PLAN plan
+    class BT,CM,PL,CTRL nav
+    class OA,THR,ACT ctl
+    style SIM fill:#f6f9ff,stroke:#1f6feb,stroke-width:1.5px
+    style PERC fill:#f7fcf9,stroke:#2e9e5b,stroke-width:1.5px
+    style PLANG fill:#fffbf3,stroke:#d98a00,stroke-width:1.5px
+    style NAV2 fill:#fff8f7,stroke:#d0453a,stroke-dasharray:4 3
+    style CTL fill:#fbf9fe,stroke:#7a4cc2,stroke-width:1.5px

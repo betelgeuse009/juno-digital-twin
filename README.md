@@ -13,13 +13,11 @@ Built for the **[H2politO](https://areeweb.polito.it/didattica/h2polito/)** Shel
 
 </div>
 
-<!--
-  TODO before publishing: record a short clip of the car driving / avoiding obstacles in CARLA
-  (RViz + CARLA spectator side by side works well), save it as docs/media/demo.gif
-  (keep it under ~10 MB), then replace this comment with:
-
-  <p align="center"><img src="docs/media/demo.gif" width="800" alt="Juno digital twin avoiding obstacles in CARLA"></p>
--->
+<p align="center">
+  <img src="docs/media/demo.gif" width="100%" alt="Juno digital twin driving in CARLA: camera view, road segmentation, and bird's-eye lane view">
+  <br>
+  <sub>CARLA camera · road segmentation · bird's-eye lane detection with planned midpoints</sub>
+</p>
 
 ---
 
@@ -33,43 +31,12 @@ On top of the original lane-following pipeline, the twin adds a **Nav2-based obs
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph SIM["CARLA 0.9.15 (custom track map)"]
-        V["Ego vehicle 'hero'<br/>RGB · semantic seg · depth · GNSS"]
-    end
+<p align="center">
+  <a href="docs/media/architecture.svg"><img src="docs/media/architecture.png" alt="Juno digital twin architecture: CARLA ⇄ ROS 2 bridge → perception → planning (Nav2) → control and actuation" width="100%"></a>
+</p>
 
-    SIM <-->|"carla_ros_bridge<br/>(upstream dependency)"| BR(("ROS 2"))
-
-    subgraph TWIN["juno_digital_twin (this repo)"]
-        direction LR
-        ODOM["carla_odom_relay<br/>map → odom → hero TF"]
-        SEG["carla_segnode<br/>TwinLiteNet+ / HybridNets /<br/>CARLA semantic camera"]
-        STOP["carla_stop_node<br/>stop-sign detection"]
-        PLAN["carla_path_planning_plus5<br/>GNSS waypoints ⇄ vision goals<br/>(BEV lane midpoints)"]
-        subgraph NAV2["Nav2"]
-            CM["Local / global costmaps"]
-            PL["Smac Hybrid-A* planner"]
-            CTRL["Regulated Pure Pursuit<br/>(MPPI alternative)"]
-            BT["Custom Juno behaviour tree"]
-        end
-        OA["carla_obstacle_avoidance<br/>/cmd_vel → steering° + speed"]
-        THR["carla_throttle_node_v2<br/>hysteresis + watchdog"]
-        ACT["carla_steering_throttle_control<br/>→ CarlaEgoVehicleControl"]
-    end
-
-    BR --> ODOM & SEG & STOP & PLAN & CM
-    SEG -->|segmented image| PLAN
-    PLAN -->|/goal_pose| BT
-    BT --> PL --> CTRL
-    CM --> PL & CTRL
-    CTRL -->|/cmd_vel| OA
-    OA -->|commands/KalmanAngle| ACT
-    OA -->|requested_speed| THR
-    THR -->|/ECU/throttle| ACT
-    STOP -->|commands/stop| ACT & THR
-    ACT -->|vehicle_control_cmd| BR
-```
+<sub>Diagram source: <a href="docs/media/architecture.mmd"><code>docs/media/architecture.mmd</code></a>. Regenerate with
+<code>npx -y @mermaid-js/mermaid-cli -i docs/media/architecture.mmd -c docs/media/mermaid-config.json -b white -s 3 -o docs/media/architecture.png</code></sub>
 
 ## What I built
 
