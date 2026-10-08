@@ -110,6 +110,3 @@ python3 juno_digital_twin/juno_digital_twin/send_goal_pose.py
 - [Nav2](https://github.com/ros-navigation/navigation2) and [RTAB-Map](https://github.com/introlab/rtabmap_ros)
 - The H2politO autonomous driving team, for the real-vehicle Juno stack this twin mirrors
 
-## Author
-
-**Erdeniz Esmeli**: [GitHub](https://github.com/betelgeuse009) · erdenizesmeli@proton.me
